@@ -7,7 +7,7 @@ let body = JSON.parse($request.body);
 let convertBaseEnergy = $persistentStore.read('WalkrCovertBaseEnergy');
 
 if(isNumeric(convertBaseEnergy)){
-	body.converted_energy=Math.floor(Math.random()*10000)+convertBaseEnergy;
+	body.converted_energy=Math.floor(Math.random()*10000)+parseInt(convertBaseEnergy);
 	console.log(`🚀 走路能量修改轉換完成,轉換出${body.converted_energy}能量`);
 }else{
 	console.log(`🚀 走路能量修改轉換失敗,未正確填寫正確數值`);
