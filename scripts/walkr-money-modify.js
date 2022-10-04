@@ -27,5 +27,5 @@ if(isNumeric(howMuchMoneyYouWant)){
 $done({body:JSON.stringify(body)});
 
 function isNumeric(val) {
-    return /^\d+$/.test(val);
+    return /^\d+$/.test(parseInt(val));
 }
