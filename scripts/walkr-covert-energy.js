@@ -4,7 +4,7 @@
 
 let body = JSON.parse($request.body);
 
-let convertBaseEnergy = $persistentStore.read('ConvertBaseEnergy');
+let convertBaseEnergy = $persistentStore.read('WalkrCovertBaseEnergy');
 
 if(isNumeric(convertBaseEnergy)){
 	body.converted_energy=Math.floor(Math.random()*10000)+convertBaseEnergy;

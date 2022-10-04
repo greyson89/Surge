@@ -10,13 +10,13 @@
 
 let body = JSON.parse($request.body);
 
-let processWalkrMoney = $persistentStore.read("ProcessWalkrMoney");
+let WalkrIsExecuteMoneyModify = $persistentStore.read("WalkrIsExecuteMoneyModify");
 
-if(processWalkrMoney==false){
+if(WalkrIsExecuteMoneyModify!=='true'){
 	$done();
 }
 
-let howMuchMoneyYouWant = $persistentStore.read('WalkerMoney');
+let howMuchMoneyYouWant = $persistentStore.read('WalkrMoney');
 if(isNumeric(howMuchMoneyYouWant)){
 	body.player.coins+=howMuchMoneyYouWant;
 	$notification.post('🚀 Walkr',`修改伺服器金錢${body.player.coins}`,'請刪除APP並重新安裝與登入');
