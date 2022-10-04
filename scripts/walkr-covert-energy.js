@@ -6,8 +6,8 @@ let body = JSON.parse($request.body);
 
 let convertBaseEnergy = $persistentStore.read('ConvertBaseEnergy');
 
-if(isNumeric(howMuchMoneyYouWant)){
-	body.player.coins+=howMuchMoneyYouWant;
+if(isNumeric(convertBaseEnergy)){
+	body.player.coins+=convertBaseEnergy;
 	$notification.post('🚀 Walkr',`修改伺服器金錢${body.player.coins}`,'請刪除APP並重新安裝與登入');
 }else{
 	$notification.post('🚀 Walkr',`未正確填寫預期金額`,'');
