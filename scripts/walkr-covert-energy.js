@@ -7,16 +7,15 @@ let body = JSON.parse($request.body);
 let convertBaseEnergy = $persistentStore.read('ConvertBaseEnergy');
 
 if(isNumeric(convertBaseEnergy)){
-	body.player.coins+=convertBaseEnergy;
-	$notification.post('🚀 Walkr',`修改伺服器金錢${body.player.coins}`,'請刪除APP並重新安裝與登入');
+	body.converted_energy=Math.floor(Math.random()*10000)+convertBaseEnergy;
+	console.log(`🚀 走路能量修改轉換完成,轉換出${body.converted_energy}能量`);
 }else{
-	$notification.post('🚀 Walkr',`未正確填寫預期金額`,'');
+	console.log(`🚀 走路能量修改轉換失敗,未正確填寫正確數值`);
+	$notification.post('🚀 Walkr',`走路能量修改轉換失敗`,'未正確填寫正確數值');
 }
 
 
-body.converted_energy=Math.floor(Math.random()*10000)+90000;
 
-console.log(`走路能量修改轉換完成,轉換出${body.converted_energy}能量`);
 // $notification.post('🚀 Walkr','修改轉換能量'+body.converted_energy,'');
 
 $done({body:JSON.stringify(body)});
