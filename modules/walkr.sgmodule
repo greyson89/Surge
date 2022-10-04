@@ -1,0 +1,25 @@
+#!name=Walkr微調v3
+#!desc=請先手動開啟walkr-settings.js進行設定,其他功能請參考各腳本詳細資訊
+#!system=ios 
+
+[Script]
+#修改艦橋數據
+walkr-bridge-energy.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\?,requires-body=1,max-size=0,script-path=walkr-bridge-energy.js
+
+#取得艦橋修改後數據能量
+walkr-bridge-get-energy.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\/consume,requires-body=1,max-size=0,script-path=walkr-bridge-get-energy.js
+
+#轉換指定能量提供其他共駕
+walkr-covert-energy.js = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\/convert,requires-body=1,max-size=0,script-path=walkr-covert-energy.js
+
+#調整server金錢數據
+#警告： 需熟悉流程以及資料備份,需非常小心！
+#警告： 需熟悉流程以及資料備份,需非常小心！
+#警告： 需熟悉流程以及資料備份,需非常小心！
+walkr-money-modify.js = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/u\/player,requires-body=1,max-size=0,script-path=walkr-money-modify.js
+
+#設定要提供的指定能量數值,金額調整幅度
+walkr-settings.js = script-path=walkr-settings.js,script-update-interval=-1
+
+[MITM]
+hostname = %APPEND% *.fourdesireplay.io, *.fourdesire.com
