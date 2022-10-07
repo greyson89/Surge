@@ -21,5 +21,9 @@ walkr-money-modify.js = type=http-request,pattern=https:\/\/production\.sw\.(fou
 # 設定要提供的指定能量數值,金額調整幅度
 walkr-settings.js = script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-settings.js,script-update-interval=-1
 
+# 調整上傳的步數資訊
+walkr-pedometer-modify.js = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/u\/activity,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-pedometer-modify.js
+
+
 [MITM]
 hostname = %APPEND% *.fourdesireplay.io, *.fourdesire.com
