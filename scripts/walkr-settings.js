@@ -15,6 +15,16 @@ let WalkrIsExecuteMoneyModify = 'false';
 // 不確定安全值範圍,建議低於20億
 let WalkrMoney = '100000000';
 
+// 修改提供給Server的能量方塊數據 true/false
+// 預設關閉修改功能,如要啟動請改為 true
+// 危險操作請注意
+let WalkrIsExecuteCubeModify = 'false';
+
+// 修改提供給Server的能量方塊數據,會以現有的加上填入值送上去
+// 不確定安全值範圍
+let WalkrMoney = '280000';
+
+
 
 $persistentStore.write(WalkrCovertBaseEnergy, "WalkrCovertBaseEnergy");
 $persistentStore.write(WalkrIsExecuteMoneyModify, "WalkrIsExecuteMoneyModify");
