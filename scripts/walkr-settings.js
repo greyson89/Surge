@@ -29,6 +29,10 @@ let WalkrCube = '280000';
 $persistentStore.write(WalkrCovertBaseEnergy, "WalkrCovertBaseEnergy");
 $persistentStore.write(WalkrIsExecuteMoneyModify, "WalkrIsExecuteMoneyModify");
 $persistentStore.write(WalkrMoney, "WalkrMoney");
+$persistentStore.write(WalkrIsExecuteCubeModify, "WalkrIsExecuteCubeModify");
+$persistentStore.write(WalkrCube, "WalkrCube");
+
+
 
 $notification.post("🚀 Walkr", `參數設定完成`, "");
 $done();
