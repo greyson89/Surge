@@ -11,7 +11,6 @@
 let body = JSON.parse($request.body);
 
 let WalkrIsExecuteMoneyModify = $persistentStore.read("WalkrIsExecuteMoneyModify");
-
 if (WalkrIsExecuteMoneyModify === "true") {
     let howMuchMoneyYouWant = $persistentStore.read("WalkrMoney");
     if (isNumeric(howMuchMoneyYouWant)) {
@@ -22,6 +21,8 @@ if (WalkrIsExecuteMoneyModify === "true") {
     }
 }
 
+
+let WalkrIsExecuteCubeModify = $persistentStore.read("WalkrIsExecuteCubeModify");
 if (WalkrIsExecuteCubeModify === "true") {
     let howManyCubesYouWant = $persistentStore.read("WalkrCube");
     if (isNumeric(howManyCubesYouWant)) {
