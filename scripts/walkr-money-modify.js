@@ -1,5 +1,5 @@
 // Walkr money modify (need to delete the app, then reinstall and login)
-// Walkr 修改傳送給伺服器金錢 未修改其他資料如能量方塊以防萬一
+// Walkr 修改傳送給伺服器金錢 修改能量方塊測試中 請謹慎使用
 
 // 警告： 需熟悉流程以及資料備份,需非常小心！
 // 警告： 需熟悉流程以及資料備份,需非常小心！
@@ -19,6 +19,16 @@ if (WalkrIsExecuteMoneyModify === "true") {
         $notification.post("🚀 Walkr", `修改伺服器金錢${body.player.coins}`, "請刪除APP並重新安裝與登入");
     } else {
         $notification.post("🚀 Walkr", `未正確填寫預期金額`, "");
+    }
+}
+
+if (WalkrIsExecuteCubeModify === "true") {
+    let howManyCubesYouWant = $persistentStore.read("WalkrCube");
+    if (isNumeric(howManyCubesYouWant)) {
+        body.player.cubes += parseInt(howManyCubesYouWant);
+        $notification.post("🚀 Walkr", `修改伺服器方塊${body.player.cubes}`, "請刪除APP並重新安裝與登入");
+    } else {
+        $notification.post("🚀 Walkr", `未正確填寫預期方塊`, "");
     }
 }
 
