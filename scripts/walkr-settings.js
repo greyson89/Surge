@@ -22,7 +22,7 @@ let WalkrIsExecuteCubeModify = 'false';
 
 // 修改提供給Server的能量方塊數據,會以現有的加上填入值送上去
 // 不確定安全值範圍
-let WalkrMoney = '280000';
+let WalkrCube = '280000';
 
 
 
