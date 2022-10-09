@@ -6,6 +6,11 @@ let enterPriseID = $persistentStore.read("FamilyGourmetEnterPriseID");
 let account = $persistentStore.read("FamilyGourmetAccount");
 let tokenkey = $persistentStore.read("FamilyGourmetTokenkey");
 
+if(!mac || !enterPriseID || !account || !tokenkey){
+	notify("🍽 全家餐飲","請先取得必要token", null,null,null);
+	$done();
+}
+
 let getActivityBody = {
     mac: mac,
     isFrom: "figapp",
