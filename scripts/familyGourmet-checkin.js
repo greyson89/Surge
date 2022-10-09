@@ -36,8 +36,8 @@ $httpClient.post(req, function (error, response, data) {
                 const obj =  JSON.parse(data);
 
                 if (obj.Remark.ActivityTitle === "每日固定簽到活動") {
-					console.log("找到每日簽到活動");
 					activityID = obj.Remark.GID;
+					console.log(`找到每日簽到活動 ${activityID}`);
                 } else {
                     $notification.post("🍽 全家餐飲", "找不到每日簽到活動 ‼️", obj.ErrorMsg);
 					console.log(`找不到每日簽到活動 ${obj}`);
@@ -67,6 +67,8 @@ let checkinBody = {
     Account: account,
     Tokenkey: tokenkey,
 };
+console.log(`checkinBody`);
+console.log(checkinBody);
 
 req.body = JSON.stringify(checkinBody);
 $httpClient.post(req, function (error, response, data) {
@@ -81,7 +83,7 @@ $httpClient.post(req, function (error, response, data) {
                     $notification.post("🍽 全家餐飲", "打卡成功 ✅", obj.ErrorMsg);
                 } else {
                     $notification.post("🍽 全家餐飲", "打卡失敗2 ‼️", obj.ErrorMsg);
-					console.log(`打卡失敗2 ${obj.ErrorMsg}`);
+					console.log(`打卡失敗2 ${obj}`);
                 }
             } catch (error) {
                 $notification.post("🍽 全家餐飲", "打卡失敗3", error);
