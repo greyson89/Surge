@@ -4,7 +4,7 @@
 let mac = $persistentStore.read("FamilyGourmetMac");
 let enterPriseID = $persistentStore.read("FamilyGourmetEnterPriseID");
 let account = $persistentStore.read("FamilyGourmetAccount");
-let tokenkey = $persistentStore.read("FamilyGourmetTokenKey");
+let tokenkey = $persistentStore.read("FamilyGourmetTokenkey");
 
 let getActivityBody = {
     "mac": mac,
