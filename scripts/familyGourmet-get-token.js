@@ -2,7 +2,7 @@
 
 let body = JSON.parse($request.body);
 
-if(body.mac && body.EnterPriseID && body.Account && body.TokenKey){
+if(body.mac && body.EnterPriseID && body.Account && body.Tokenkey){
 	$persistentStore.write(body.mac,'FamilyGourmetMac');
 	$persistentStore.write(body.EnterPriseID,'FamilyGourmetEnterPriseID');
 	$persistentStore.write(body.Account,'FamilyGourmetAccount');
