@@ -32,18 +32,21 @@ $httpClient.post(req, function (error, response, data) {
     } else {
         if (response.status === 200) {
             try {
-				data = data.replace('"[',"").replace(']"',"");
+				data = data.replace('"[',"").replace(']"',"").replaceAll("\\","");
 				console.log(data);
-				console.log("-----");
-
-				// data = data.replace("\\","");
+				console.log("^^^data^^^");
 
                 const obj =  JSON.parse(data);
 				console.log(obj);
+				console.log("^^^json^^");
 
-				// const obj = JSON.parse(obj2.Remark);
-				// console.log(obj);
+				console.log(`Remark = ${obj.Remark}`);
+				console.log(`GID = ${obj.Remark.GID}`);
+				console.log(`ActivityTitle = ${obj.Remark.ActivityTitle}`);
+				console.log(typeof obj.Remark.ActivityTitle);
 
+				console.log("^^^details^^^");
+				
                 if (obj.Remark.ActivityTitle.incudes("每日固定簽到活動")) {
 					console.log("找到每日簽到活動");
 					activityID = obj.Remark.GID;
