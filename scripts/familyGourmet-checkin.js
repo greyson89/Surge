@@ -1,4 +1,4 @@
-// 全家餐飲每日打卡
+// 享聚卡 全家餐飲 每日打卡
 
 let mac = $persistentStore.read("FamilyGourmetMac");
 let enterPriseID = $persistentStore.read("FamilyGourmetEnterPriseID");

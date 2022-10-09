@@ -1,5 +1,5 @@
-#!name=Family Gourmet 全家餐飲享聚卡自動打卡 Ver.TEST
-#!desc=模組啟動後，需先手動執行一次打卡動作取得token等數據
+#!name=Family Gourmet 享聚卡 全家餐飲 自動打卡
+#!desc=模組啟動後，需先手動去APP當中，執行一次打卡動作取得token等數據(或是會員功能隨便點看到訊息即可)
 #!system=ios 
 
 [Script]
