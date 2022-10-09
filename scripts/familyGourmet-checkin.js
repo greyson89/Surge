@@ -34,7 +34,7 @@ $httpClient.post(req, function (error, response, data) {
             try {
                 const obj2 =  JSON.parse(data);
 				console.log(obj2);
-				const obj = JSON.parse(obj2);
+				const obj = JSON.parse(obj2.remark);
 				console.log(obj);
 
                 if (obj.ActivityTitle.incudes("每日固定簽到活動")) {

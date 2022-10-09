@@ -7,6 +7,8 @@ const d = new Date();
 let needWalking = d.getHours()*2000;
 let needRunning = Math.floor( Math.random()*100 );
 
+console.log(body);
+
 // 24小時制 如未達最低值會以該小時*2000步 如中午十二點走路步數應該是12*2000= 24000 如未達到則會加上2000步後上傳
 if( needWalking > body.updated_objects[0].walking){
 	body.updated_objects[0].walking += 2000;
