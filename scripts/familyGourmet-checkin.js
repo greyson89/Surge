@@ -32,14 +32,21 @@ $httpClient.post(req, function (error, response, data) {
     } else {
         if (response.status === 200) {
             try {
-                const obj2 =  JSON.parse(data);
-				console.log(obj2);
-				const obj = JSON.parse(obj2.Remark);
+				data = data.replace('"[',"").replace(']"',"");
+				console.log(data);
+				console.log("-----");
+
+				// data = data.replace("\\","");
+
+                const obj =  JSON.parse(data);
 				console.log(obj);
 
-                if (obj.ActivityTitle.incudes("每日固定簽到活動")) {
+				// const obj = JSON.parse(obj2.Remark);
+				// console.log(obj);
+
+                if (obj.Remark.ActivityTitle.incudes("每日固定簽到活動")) {
 					console.log("找到每日簽到活動");
-					activityID = obj.GID;
+					activityID = obj.Remark.GID;
                 } else {
                     $notification.post("🍽 全家餐飲", "找不到每日簽到活動 ‼️", obj.ErrorMsg);
 					console.log(`找不到每日簽到活動 ${obj}`);
