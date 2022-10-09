@@ -38,8 +38,7 @@ function getActivity() {
     return new Promise((resolve, reject) => {
         $httpClient.post(req, function (error, response, data) {
             if (error) {
-                $notification.post("🍽 全家餐飲", "尋找活動失敗", error);
-                console.log(`尋找活動失敗1 ${error}`);
+				notify("🍽 全家餐飲","尋找活動失敗", null,"尋找活動失敗1",error);
                 reject();
             } else {
                 if (response.status === 200) {
@@ -49,21 +48,18 @@ function getActivity() {
 
                         if (obj.Remark.ActivityTitle === "每日固定簽到活動") {
                             activityID = obj.Remark.GID;
-                            console.log(`找到每日簽到活動 ${activityID}`);
+							notify("🍽 全家餐飲","找到每日簽到活動", null,"找到每日簽到活動",activityID);
                             resolve();
                         } else {
-                            $notification.post("🍽 全家餐飲", "找不到每日簽到活動 ‼️", obj.ErrorMsg);
-                            console.log(`找不到每日簽到活動 ${obj}`);
+							notify("🍽 全家餐飲","找不到每日簽到活動", obj.ErrorMsg,"找不到每日簽到活動",obj.ErrorMsg);
                             reject();
                         }
                     } catch (error) {
-                        $notification.post("🍽 全家餐飲", "尋找活動失敗", error);
-                        console.log(`尋找活動失敗2 ${error}`);
+                        notify("🍽 全家餐飲","尋找活動失敗", null,"尋找活動失敗2",error);
                         reject();
                     }
                 } else {
-                    $notification.post("🍽 全家餐飲", "尋找活動失敗", error);
-                    console.log(`尋找活動失敗3 ${error}`);
+					notify("🍽 全家餐飲","尋找活動失敗", null,"尋找活動失敗3",error);
                     reject();
                 }
             }
@@ -86,32 +82,38 @@ function checkin() {
         Tokenkey: tokenkey,
     };
 
-    console.log(`checkinBody`);
-    console.log(checkinBody);
-
     req.body = JSON.stringify(checkinBody);
     $httpClient.post(req, function (error, response, data) {
         if (error) {
-            $notification.post("🍽 全家餐飲", "打卡失敗1", error);
-            console.log(`打卡失敗1 ${error}`);
+			notify("🍽 全家餐飲","打卡失敗", null,"打卡失敗1",error);
         } else {
             if (response.status === 200) {
                 try {
                     const obj = JSON.parse(data);
                     if (obj.ErrorMsg.includes("今日已簽到成功")) {
-                        $notification.post("🍽 全家餐飲", "打卡成功 ✅", obj.ErrorMsg);
+						notify("🍽 全家餐飲","打卡成功", obj.ErrorMsg,"打卡成功",null);
                     } else {
-                        $notification.post("🍽 全家餐飲", "打卡失敗2 ‼️", obj.ErrorMsg);
-                        console.log(`打卡失敗2 ${obj}`);
+						notify("🍽 全家餐飲","打卡失敗", obj.ErrorMsg,"打卡失敗2",obj);
                     }
                 } catch (error) {
-                    $notification.post("🍽 全家餐飲", "打卡失敗3", error);
-                    console.log(`打卡失敗3 ${error}`);
+					notify("🍽 全家餐飲","打卡失敗",null,"打卡失敗3",error);
                 }
             } else {
-                $notification.post("🍽 全家餐飲", "打卡失敗4", error);
-                console.log(`打卡失敗4 ${error}`);
+				notify("🍽 全家餐飲","打卡失敗",null,"打卡失敗4",error);
             }
         }
     });
+}
+
+
+function notify(notifyTitle,notifyMsg,notifyContent,clgTitle,clgContent){
+
+	if(notifyTitle){
+		$notification.post(notifyTitle, notifyMsg, notifyContent);
+	}
+	if(clgTitle){
+		console.log(clgTitle);
+		console.log(clgContent);
+	}
+	
 }
