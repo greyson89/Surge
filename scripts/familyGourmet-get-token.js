@@ -28,4 +28,4 @@ if(body.TokenKey){
 
 $notification.post('🍽 全家餐飲',result,'');
 
-$done({body:JSON.stringify(body)});
+$done({body:body});
