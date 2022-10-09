@@ -8,6 +8,9 @@ if(body.mac){
 	result += '取得mac\n';
 	console.log(`get mac ${body.mac}`);
 	$persistentStore.write(body.mac,'FamilyGourmetMac');
+}else{
+	result += '未取得mac\n';
+	console.log(`get mac ${body.mac}`);
 }
 if(body.EnterPriseID){
 	result += '取得enterPriseID\n';
