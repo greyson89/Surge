@@ -1,6 +1,7 @@
 // 嘗試取得token
 
 let body = JSON.parse($request.body);
+console.log(typeof $request.body);
 console.log(body);
 
 let result = '';
