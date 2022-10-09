@@ -1,6 +1,7 @@
 // 嘗試取得token
 
 let body = $request.body;
+console.log(body);
 
 let result = '';
 if(body.mac){
