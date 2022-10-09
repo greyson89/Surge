@@ -5,23 +5,28 @@ let body = $request.body;
 let result = '';
 if(body.mac){
 	result += '取得mac\n';
-	$persistStore.write(body.mac,'FamilyGourmetMac');
+	console.log(`get mac ${body.mac}`);
+	$persistentStore.write(body.mac,'FamilyGourmetMac');
 }
 if(body.EnterPriseID){
 	result += '取得enterPriseID\n';
-	$persistStore.write(body.mac,'FamilyGourmetEnterPriseID');
+	console.log(`get mac ${body.EnterPriseID}`);
+	$persistentStore.write(body.EnterPriseID,'FamilyGourmetEnterPriseID');
 }
 if(body.ActivityID){
 	result += '取得ActivityID\n';
-	$persistStore.write(body.mac,'FamilyGourmetActivityID');
+	console.log(`get mac ${body.ActivityID}`);
+	$persistentStore.write(body.ActivityID,'FamilyGourmetActivityID');
 }
 if(body.Account){
 	result += '取得Account\n';
-	$persistStore.write(body.mac,'FamilyGourmetAccount');
+	console.log(`get mac ${body.Account}`);
+	$persistentStore.write(body.Account,'FamilyGourmetAccount');
 }
 if(body.TokenKey){
 	result += '取得TokenKey\n';
-	$persistStore.write(body.mac,'FamilyGourmetTokenKey');
+	console.log(`get mac ${body.TokenKey}`);
+	$persistentStore.write(body.TokenKey,'FamilyGourmetTokenKey');
 }
 
 
