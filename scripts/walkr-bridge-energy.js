@@ -3,11 +3,9 @@
 
 let body = JSON.parse($response.body);
 
-body.pilots[0].energy=160000;
-body.pilots[1].energy=160000;
-body.pilots[2].energy=160000;
-body.pilots[3].energy=160000;
-//body.pilots[4].energy=160000; // 如有的五位共駕再開啟
+for (const pilot of body.pilots) {
+	pilot.energy =160000;
+}
 
 console.log(`🚀 修改共駕能量數據完成`);
 //$notification.post('🚀 Walkr','修改共駕能量數據','');
