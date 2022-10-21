@@ -19,6 +19,41 @@ let addList = [
         exist: false,
 		shipChName: "飛鰭偵查艇-金",
     },
+    {
+        shipName: "flyingfish-bone",
+        exist: false,
+		shipChName: "飛鰭偵查艇-骨",
+    },
+    {
+        shipName: "supercat-orange",
+        exist: false,
+		shipChName: "超級貓飛船-橘",
+    },
+    {
+        shipName: "supercat-white",
+        exist: false,
+		shipChName: "超級貓飛船-白",
+    },
+	{
+        shipName: "supercat-grey",
+        exist: false,
+		shipChName: "超級貓飛船-灰",
+    },
+	{
+        shipName: "supercat-black",
+        exist: false,
+		shipChName: "超級貓飛船-黑",
+    },
+    {
+        shipName: "penguin-emperor",
+        exist: false,
+		shipChName: "破雪號-皇帝企鵝",
+    },
+    {
+        shipName: "candy_seeker-pumpkin",
+        exist: false,
+		shipChName: "糖果探勘號-南瓜",
+    },
 ];
 
 // 檢查是否存在
