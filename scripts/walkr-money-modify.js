@@ -33,6 +33,8 @@ if (WalkrIsExecuteCubeModify === "true") {
     }
 }
 
+body.player.spaceship = "rudolph";
+
 $done({ body: JSON.stringify(body) });
 
 function isNumeric(val) {
