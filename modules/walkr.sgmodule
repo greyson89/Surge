@@ -4,13 +4,13 @@
 
 [Script]
 # 修改艦橋數據
-walkr-bridge-energy.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\?,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-bridge-energy.js
+walkr-bridge-energy.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\?,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-bridge-energy.js
 
 # 取得艦橋修改後數據能量
-walkr-bridge-get-energy.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\/consume,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-bridge-get-energy.js
+walkr-bridge-get-energy.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\/consume,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-bridge-get-energy.js
 
 # 轉換指定能量提供其他共駕
-walkr-covert-energy.js = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\/convert,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-covert-energy.js
+walkr-covert-energy.js = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\/convert,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-covert-energy.js
 
 # 調整server金錢數據
 # 警告： 需熟悉流程以及資料備份,需非常小心！
@@ -19,10 +19,10 @@ walkr-covert-energy.js = type=http-request,pattern=https:\/\/production\.sw\.(fo
 walkr-money-modify.js = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/u\/player,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-money-modify.js
 
 # 設定要提供的指定能量數值,金額調整幅度
-walkr-settings.js = script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-settings.js,script-update-interval=-1
+walkr-settings.js = script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-settings.js,script-update-interval=-1
 
 # 調整上傳的步數資訊
-walkr-pedometer-modify.js = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/u\/activity,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-pedometer-modify.js
+walkr-pedometer-modify.js = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/u\/activity,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-pedometer-modify.js
 
 
 [MITM]
