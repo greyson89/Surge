@@ -33,7 +33,11 @@ if (WalkrIsExecuteCubeModify === "true") {
     }
 }
 
-body.player.spaceship = "rudolph";
+let WalkrSpaceship = $persistentStore.read("WalkrSpaceship");
+if(WalkrSpaceship){
+    body.player.spaceship = WalkrSpaceship;
+}
+
 
 $done({ body: JSON.stringify(body) });
 
