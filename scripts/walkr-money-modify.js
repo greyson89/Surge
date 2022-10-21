@@ -33,12 +33,6 @@ if (WalkrIsExecuteCubeModify === "true") {
     }
 }
 
-let WalkrSpaceship = $persistentStore.read("WalkrSpaceship");
-if(WalkrSpaceship){
-    body.player.spaceship = WalkrSpaceship;
-}
-
-
 $done({ body: JSON.stringify(body) });
 
 function isNumeric(val) {
