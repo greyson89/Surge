@@ -4,16 +4,20 @@
 
 let body = JSON.parse($response.body);
 
+// 糖果探勘號
+// 破雪號
+// 超級貓飛船
+// 波奇歷險號
 let addList = [
     {
         shipName: "rudolph",
         exist: false,
-		shipChName: "雪橇馴鹿號",
+		shipChName: "聖誕馴鹿號",
     },
     {
         shipName: "flyingfish-gold",
         exist: false,
-		shipChName: "黃金飛魚號",
+		shipChName: "飛鰭偵查艇-金",
     },
 ];
 
