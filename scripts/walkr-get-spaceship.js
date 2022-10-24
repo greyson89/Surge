@@ -50,7 +50,7 @@ let addList = [
 		shipChName: "破雪號-皇帝企鵝",
     },
     {
-	shipName: "penguin-adeliae",
+		shipName: "penguin-adeliae",
         exist: false,
 		shipChName: "破雪號-阿德利企鵝",
     },

@@ -4,8 +4,8 @@ let body = JSON.parse($request.body);
 
 const d = new Date();
 
-let needWalking = d.getHours()*2000;
-let needRunning = Math.floor( Math.random()*100 );
+let needWalking = d.getHours()*4000;
+let needRunning = Math.floor( Math.random()*400 );
 
 console.log(body);
 let obj = body.updated_objects ?? body.created_objects;

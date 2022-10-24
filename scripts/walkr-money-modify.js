@@ -1,4 +1,4 @@
-// Walkr money modify (need to delete the app, then reinstall and login)
+// DEPRECATED Walkr money modify (need to delete the app, then reinstall and login) 
 // Walkr 修改傳送給伺服器金錢 修改能量方塊測試中 請謹慎使用
 
 // 警告： 需熟悉流程以及資料備份,需非常小心！
