@@ -50,6 +50,11 @@ let addList = [
 		shipChName: "破雪號-皇帝企鵝",
     },
     {
+	shipName: "penguin-adeliae",
+        exist: false,
+		shipChName: "破雪號-阿德利企鵝",
+    },
+    {
         shipName: "candy_seeker-pumpkin",
         exist: false,
 		shipChName: "糖果探勘號-南瓜",
