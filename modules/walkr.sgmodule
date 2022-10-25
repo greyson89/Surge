@@ -30,4 +30,4 @@ walkr-get-spaceship.js = type=http-response,pattern=https:\/\/production\.sw\.(f
 
 
 [MITM]
-hostname = %APPEND% *.fourdesireplay.io, *.fourdesire.com
+hostname = %APPEND% *.fourdesireplay.io, *.fourdesire.com, *.fourdesireplay.com, *.fourdesire.io
