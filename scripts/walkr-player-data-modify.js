@@ -16,7 +16,7 @@ if (WalkrIsExecuteMoneyModify === "true") {
     let howMuchMoneyYouWant = $persistentStore.read("WalkrMoney");
     if (isNumeric(howMuchMoneyYouWant)) {
         body.player.coins += parseInt(howMuchMoneyYouWant);
-        $notification.post("🚀 Walkr", `金幣變更為${body.player.coins}`, "");
+        $notification.post("🚀 Walkr", `金幣增加為${body.player.coins}`, "");
     } else {
         $notification.post("🚀 Walkr", `變更失敗 未正確填寫預期金額`, "");
     }
@@ -28,7 +28,7 @@ if (WalkrIsExecuteCubeModify === "true") {
     let howManyCubesYouWant = $persistentStore.read("WalkrCube");
     if (isNumeric(howManyCubesYouWant)) {
         body.player.cubes += parseInt(howManyCubesYouWant);
-        $notification.post("🚀 Walkr", `能量方塊金幣變更為${body.player.cubes}`, "");
+        $notification.post("🚀 Walkr", `能量方塊增加為${body.player.cubes}`, "");
     } else {
         $notification.post("🚀 Walkr", `變更失敗 未正確填寫預期方塊`, "");
     }
