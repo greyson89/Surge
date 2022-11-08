@@ -1,10 +1,9 @@
-// Walkr unlimited lab donate TEST
+// Walkr modify lab donate reward TODO:
 
 let body = JSON.parse($response.body);
 
-for (const person of body.comments) {
-	person.comment.donated_counter='';
-}
+// body.success=false;
+
 
 
 $done({ body: JSON.stringify(body) });
