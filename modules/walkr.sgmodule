@@ -18,7 +18,5 @@ walkr-pedometer-modify.js = type=http-request,pattern=https:\/\/production\.sw\.
 
 walkr-get-spaceship.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/d\/spaceship,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-get-spaceship.js
 
-walkr-donate-reward-modify.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/labs\/[\d]+\/donate,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-donate-reward-modify.js
-
 [MITM]
 hostname = %APPEND% *.fourdesireplay.io, *.fourdesire.com, *.fourdesireplay.com, *.fourdesire.io

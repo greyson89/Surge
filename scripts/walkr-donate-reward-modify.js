@@ -1,4 +1,4 @@
-// Walkr modify lab donate reward TEST
+// Walkr modify lab donate reward DEPRECATED
 // https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/labs\/[\d]{1,6}\/donate
 // # DONATE無限制（要轉頁）
 // # walkr-unlimited-donate.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/comments.*(commentable_type=lab){1}.*,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-unlimited-donate.js
@@ -18,7 +18,7 @@ if (WalkrIsExecuteDonateModify !== "true") {
 
 // 捐贈換回的獎勵
 body.reward_amount = count * parseInt( WalkrDonateRewardValue );
-// 卷贈換回的獎勵類型 猜測可能有 cube or cubes, energy
+// 卷贈換回的獎勵類型 猜測可能有 cube or cubes無效, energy
 body.reward_type = WalkrDonateRewardType;
 
 // 捐贈的量（影響對方 但實際捐出還是500）

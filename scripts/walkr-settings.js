@@ -24,10 +24,10 @@ let WalkrIsExecuteCubeModify = 'false';
 let WalkrCube = '150000';
 
 
-// LAB donate 獎勵類型 預設為coins,可能可以有cubes, energy
-let WalkrIsExecuteDonateModify = 'false';
-let WalkrDonateRewardType = 'coins';
-let WalkrDonateRewardValue = '500';
+// DEPRECATED LAB donate 獎勵類型 預設為coins,可能可以有cubes無效, energy
+// let WalkrIsExecuteDonateModify = 'false';
+// let WalkrDonateRewardType = 'coins';
+// let WalkrDonateRewardValue = '500';
 
 
 $persistentStore.write(WalkrCovertBaseEnergy, "WalkrCovertBaseEnergy");
@@ -35,9 +35,9 @@ $persistentStore.write(WalkrIsExecuteMoneyModify, "WalkrIsExecuteMoneyModify");
 $persistentStore.write(WalkrMoney, "WalkrMoney");
 $persistentStore.write(WalkrIsExecuteCubeModify, "WalkrIsExecuteCubeModify");
 $persistentStore.write(WalkrCube, "WalkrCube");
-$persistentStore.write(WalkrIsExecuteDonateModify, "WalkrIsExecuteDonateModify");
-$persistentStore.write(WalkrDonateRewardType, "WalkrDonateRewardType");
-$persistentStore.write(WalkrDonateRewardValue, "WalkrDonateRewardValue");
+// $persistentStore.write(WalkrIsExecuteDonateModify, "WalkrIsExecuteDonateModify");
+// $persistentStore.write(WalkrDonateRewardType, "WalkrDonateRewardType");
+// $persistentStore.write(WalkrDonateRewardValue, "WalkrDonateRewardValue");
 
 
 $notification.post("🚀 Walkr", `參數設定完成`, "");
