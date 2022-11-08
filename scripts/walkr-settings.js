@@ -10,20 +10,24 @@ let WalkrCovertBaseEnergy = '150000';
 // 修改提供給Server的金錢數據 true/false
 // 預設關閉修改功能,如要啟動請改為 true
 let WalkrIsExecuteMoneyModify = 'false';
-
 // 修改提供給Server的金錢數據,會以現有的加上填入值送上去
-// 不確定安全值範圍,建議低於20億
-let WalkrMoney = '15_000_000_000';
+// 不確定安全值範圍,建議低於30億
+let WalkrMoney = '30000000000';
+
 
 // 修改提供給Server的能量方塊數據 true/false
 // 預設關閉修改功能,如要啟動請改為 true
 // 危險操作請注意
 let WalkrIsExecuteCubeModify = 'false';
-
 // 修改提供給Server的能量方塊數據,會以現有的加上填入值送上去
 // 不確定安全值範圍
-let WalkrCube = '280000';
+let WalkrCube = '150000';
 
+
+// LAB donate 獎勵類型 預設為coins,可能可以有cubes, energy
+let WalkrIsExecuteDonateModify = 'false';
+let WalkrDonateRewardType = 'coins';
+let WalkrDonateRewardValue = '500';
 
 
 $persistentStore.write(WalkrCovertBaseEnergy, "WalkrCovertBaseEnergy");
@@ -31,7 +35,9 @@ $persistentStore.write(WalkrIsExecuteMoneyModify, "WalkrIsExecuteMoneyModify");
 $persistentStore.write(WalkrMoney, "WalkrMoney");
 $persistentStore.write(WalkrIsExecuteCubeModify, "WalkrIsExecuteCubeModify");
 $persistentStore.write(WalkrCube, "WalkrCube");
-
+$persistentStore.write(WalkrIsExecuteDonateModify, "WalkrIsExecuteDonateModify");
+$persistentStore.write(WalkrDonateRewardType, "WalkrDonateRewardType");
+$persistentStore.write(WalkrDonateRewardValue, "WalkrDonateRewardValue");
 
 
 $notification.post("🚀 Walkr", `參數設定完成`, "");

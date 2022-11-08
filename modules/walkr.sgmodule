@@ -28,9 +28,11 @@ walkr-pedometer-modify.js = type=http-request,pattern=https:\/\/production\.sw\.
 # 添加活動飛船
 walkr-get-spaceship.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/d\/spaceship,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-get-spaceship.js
 
-# 添加DONATE測試
+# DONATE無限制（要轉頁）
 ## walkr-unlimited-donate.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/labs\/[\d]{1,6}\/donate,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-unlimited-donate.js
 
+# DONATE取得獎勵修改
+walkr-donate-reward-modify.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/labs\/[\d]{1,6}\/donate,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-donate-reward-modify.js.js
 
 [MITM]
 hostname = %APPEND% *.fourdesireplay.io, *.fourdesire.com, *.fourdesireplay.com, *.fourdesire.io
