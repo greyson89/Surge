@@ -1,10 +1,11 @@
 // 上傳調整後的進步器資訊 稍微符合高能量的情境
+// XXX: 似乎無效 暫時擱置
 
 let body = JSON.parse($request.body);
 
 const d = new Date();
 
-let needWalking = d.getHours()*4000;
+let needWalking = d.getHours()*20000;
 let needRunning = Math.floor( Math.random()*400 );
 
 console.log(body);

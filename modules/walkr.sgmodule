@@ -1,22 +1,24 @@
-#!name=Walkr v4 ut
-#!desc=請先手動開啟walkr-settings.js進行設定,其他功能請參考各腳本詳細資訊
+#!name=Walkr v5
+#!desc=請先手動開啟[Walkr]Settings進行設定,其他功能請參考各腳本詳細資訊
 #!system=ios 
 
 [Script]
 
-walkr-bridge-energy.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\?,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-bridge-energy.js
+[Walkr]修改共駕能量 = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\?,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-bridge-energy.js
 
-walkr-bridge-get-energy.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\/consume,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-bridge-get-energy.js
+[Walkr]取得修改後共駕能量 = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\/consume,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-bridge-get-energy.js
 
-walkr-covert-energy.js = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\/convert,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-covert-energy.js
+[Walkr]修改轉換給共駕之能量 = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/pilots\/convert,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-covert-energy.js
 
-walkr-player-data-modify.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/players\/[\d]+,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-player-data-modify.js
+[Walkr]重登修改帳號數據 = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/players\/[\d]+,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-player-data-modify.js
 
-walkr-settings.js = script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-settings.js,script-update-interval=-1
+[Walkr]Settings = script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-settings.js,script-update-interval=-1
 
-walkr-pedometer-modify.js = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/u\/activity,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-pedometer-modify.js
+[Walkr]修改走路步數無效中 = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/u\/activity,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-pedometer-modify.js
 
-walkr-get-spaceship.js = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/d\/spaceship,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/feature/walkr-spaceship-test/scripts/walkr-get-spaceship.js
+[Walkr]取得未持有的特殊飛船 = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/d\/spaceship,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-get-spaceship.js
+
+[Walkr]EPIC獎勵提升 = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/fetchable_contents\?,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-change-epic-reward.js
 
 [MITM]
 hostname = %APPEND% *.fourdesireplay.io, *.fourdesire.com, *.fourdesireplay.com, *.fourdesire.io

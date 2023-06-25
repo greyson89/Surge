@@ -1,14 +1,14 @@
-#!name=Family Gourmet 享聚卡 全家餐飲 自動打卡
+#!name=Family Gourmet 享聚卡 全家餐飲 自動打卡 小氣已無打卡活動
 #!desc=模組啟動後，需先手動打開APP首頁，TOKEN在任何頁面都可抓取(有登入的狀況)
 #!system=ios 
 
 [Script]
 
 # get token
-familyGourmet-get-token.js = type=http-request,pattern= https:\/\/fig\.jh8\.tw\/public\/AppDataVIP.ashx,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/familyGourmet-get-token.js
+[全家餐飲]取得TOKEN = type=http-request,pattern= https:\/\/fig\.jh8\.tw\/public\/AppDataVIP.ashx,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/familyGourmet-get-token.js
 
 # checkin
-familyGourmet-checkin.js = type=cron, cronexp="15 0 * * *", wake-system=1, timeout=15, script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/familyGourmet-checkin.js
+[全家餐飲]打卡 = type=cron, cronexp="15 0 * * *", wake-system=1, timeout=15, script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/familyGourmet-checkin.js
 
 [MITM]
 hostname = %APPEND% fig.jh8.tw
