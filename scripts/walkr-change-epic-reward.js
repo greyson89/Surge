@@ -6,7 +6,12 @@ if ($response.body == undefined) {
     $done({});
 } else {
     let body = JSON.parse($response.body);
-    let select = "cubes"; // 輸入cubes或是map切換
+	let WalkrEpicRewardType = $persistentStore.read("WalkrEpicRewardType");
+	if(WalkrEpicRewardType == undefined || WalkrEpicRewardType == null ){
+		WalkrEpicRewardType = "cubes";
+	}else{
+		WalkrEpicRewardType = "map";
+	}
 
     let isTarget = true;
     if (body.fetchable_contents == undefined) {
@@ -20,13 +25,13 @@ if ($response.body == undefined) {
         let newValue = Number(vSplit[0]) + 200000000;
         body.fetchable_contents[1].value = `${newValue}.${vSplit[1]}.${vSplit[2]}`;
 
-        if (select == "cubes") {
+        if (WalkrEpicRewardType == "cubes") {
             let newCubes = 400000;
             body.fetchable_contents[0].value = newCubes;
 
             console.log(`🚀 獎勵調整成功 能量方塊增加為${newCubes}\n金幣增加為${newValue}`);
             $notification.post("🚀 Walkr", `獎勵調整成功 能量方塊增加為${newCubes}\n金幣增加為${newValue}`);
-        } else if (select == "map") {
+        } else if (WalkrEpicRewardType == "map") {
             body.fetchable_contents[0].key = "replicator";
             body.fetchable_contents[0].value = "map";
 
