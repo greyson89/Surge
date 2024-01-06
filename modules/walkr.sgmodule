@@ -20,5 +20,7 @@
 
 [Walkr]EPIC獎勵提升 = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/fetchable_contents\?,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-change-epic-reward.js
 
+[Walkr][T]Donate獎勵更換 = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/labs\/[\d]+\/donate,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/test/walkr-donate-reward-modify.js 
+
 [MITM]
 hostname = %APPEND% *.fourdesireplay.io, *.fourdesire.com, *.fourdesireplay.com, *.fourdesire.io
