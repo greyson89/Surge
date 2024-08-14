@@ -1,5 +1,6 @@
 #!name=Family Gourmet 享聚卡 全家餐飲 自動打卡 小氣已無打卡活動
 #!desc=模組啟動後，需先手動打開APP首頁，TOKEN在任何頁面都可抓取(有登入的狀況)
+#!category=DEPRECATED
 #!system=ios 
 
 [Script]

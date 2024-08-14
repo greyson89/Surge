@@ -1,4 +1,5 @@
 #!name=Remove LINE ADs
+#!category=LINE_ADs
 #!desc=刪掉 LINE 惱人的廣告 v20221114.02 - 需啟用 MitM over HTTP/2 移除ios限定提供mac使用 原始來源 https://github.com/jkgtw/Surge
 
 [Rule]
