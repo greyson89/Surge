@@ -7,5 +7,5 @@ hostname = %APPEND% pokerogue.net
 
 [URL Rewrite]
 # 因github raw的mime type為text/plain載入會失敗，採用特定CDN網站轉換
-^http:\/\/pokerogue\.net\.assets\.index-4979af11\.js$ https://cdn.jsdelivr.net/gh/greyson89/Surge/scripts/pokeRogue-replace.js header
+^https:\/\/pokerogue\.net\/assets\/index-4979af11\.js$ https://cdn.jsdelivr.net/gh/greyson89/Surge/scripts/pokeRogue-replace.js header
 
