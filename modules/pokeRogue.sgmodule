@@ -1,4 +1,4 @@
-#!name=PokeRogue Replace v20240814-t1
+#!name=PokeRogue Replace v20240814
 #!desc=因ios surge限制僅能rewrite來源檔案，因此改版時有失效的可能，需要再更新。
 #!category=PokeRogue
 
@@ -6,5 +6,6 @@
 hostname = %APPEND% pokerogue.net
 
 [URL Rewrite]
-^http:\/\/pokerogue\.net\.assets\.index-4979af11\.js$ https://raw.githubusercontent.com/greyson89/Surge/master/scripts/pokeRogue-replace.js header
+# 因github raw的mime type為text/plain載入會失敗，採用特定CDN網站轉換
+^http:\/\/pokerogue\.net\.assets\.index-4979af11\.js$ https://cdn.jsdelivr.net/gh/greyson89/Surge/scripts/pokeRogue-replace.js header
 
