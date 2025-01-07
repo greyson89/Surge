@@ -30,7 +30,9 @@ let WalkrCube = '150000';
 // let WalkrDonateRewardValue = '500';
 
 // epic reward type 傳說獎勵類型切換 map or cubes
-let WalkrEpicRewardType = "map";
+let WalkrEpicRewardType = "cubes";
+let WalkrEpicRewardMoney = 20_000_000_000;
+let WalkrEpicRewardCubes = 1_200_000;
 
 
 $persistentStore.write(WalkrCovertBaseEnergy, "WalkrCovertBaseEnergy");
@@ -42,6 +44,8 @@ $persistentStore.write(WalkrCube, "WalkrCube");
 // $persistentStore.write(WalkrDonateRewardType, "WalkrDonateRewardType");
 // $persistentStore.write(WalkrDonateRewardValue, "WalkrDonateRewardValue");
 $persistentStore.write(WalkrEpicRewardType, "WalkrEpicRewardType");
+$persistentStore.write(WalkrEpicRewardMoney, "WalkrEpicRewardMoney");
+$persistentStore.write(WalkrEpicRewardCubes, "WalkrEpicRewardCubes");
 
 
 $notification.post("🚀 Walkr", `參數設定完成`, "");

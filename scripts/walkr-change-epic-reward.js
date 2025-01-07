@@ -7,7 +7,9 @@ if ($response.body == undefined) {
 } else {
     let body = JSON.parse($response.body);
 	let WalkrEpicRewardType = $persistentStore.read("WalkrEpicRewardType");
-	if(WalkrEpicRewardType == undefined || WalkrEpicRewardType == null ){
+	let WalkrEpicRewardMoney = $persistentStore.read("WalkrEpicRewardMoney");
+	let WalkrEpicRewardCubes = $persistentStore.read("WalkrEpicRewardCubes");
+	if(WalkrEpicRewardType == undefined || WalkrEpicRewardType == null || WalkrEpicRewardType =="cubes"){
 		WalkrEpicRewardType = "cubes";
 	}else{
 		WalkrEpicRewardType = "map";
@@ -22,11 +24,11 @@ if ($response.body == undefined) {
 
     if (isTarget) {
         let vSplit = body.fetchable_contents[1].value.split(".");
-        let newValue = Number(vSplit[0]) + 200000000;
+        let newValue = Number(vSplit[0]) + WalkrEpicRewardMoney;
         body.fetchable_contents[1].value = `${newValue}.${vSplit[1]}.${vSplit[2]}`;
 
         if (WalkrEpicRewardType == "cubes") {
-            let newCubes = 400000;
+            let newCubes = WalkrEpicRewardCubes;
             body.fetchable_contents[0].value = newCubes;
 
             console.log(`🚀 獎勵調整成功 能量方塊增加為${newCubes}\n金幣增加為${newValue}`);
