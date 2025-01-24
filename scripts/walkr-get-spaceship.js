@@ -64,6 +64,29 @@ let addList = [
         exist: false,
 		shipChName: "糖果探勘號-南瓜",
     },
+    {
+        shipName: "hedgehog-pink",
+        exist: false,
+		shipChName: "波奇粉紅",
+    },
+    // {
+    //     shipName: "hedgehog-brown",
+    //     exist: false,
+	// 	shipChName: "波奇棕色",
+	// 	// tbc
+    // },
+    // {
+    //     shipName: "hedgehog-black",
+    //     exist: false,
+	// 	shipChName: "波奇黑色",
+	// 	// tbc
+    // },
+    // {
+    //     shipName: "hedgehog-green",
+    //     exist: false,
+	// 	shipChName: "波奇綠色",
+	// 	// tbc
+    // },
 ];
 
 // 檢查是否存在

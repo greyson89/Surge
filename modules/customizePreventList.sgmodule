@@ -1,0 +1,6 @@
+#!name= Customize Prevent List 客製避免清單
+#!desc= 防止被ad阻擋
+
+[Rule]
+DOMAIN,self.events.data.microsoft.com,DIRECT
+DOMAIN,wabi-south-east-asia-redirect.analysis.windows.net,DIRECT
