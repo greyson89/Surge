@@ -4,6 +4,7 @@
 let body = JSON.parse($response.body);
 
 body.fetchable_content.value='80000';
+body.fetchable_contents.value='80000';
 console.log(`🚀 取得能量${body.fetchable_content.value}`);
 //$notification.post('🚀 Walkr',`取得能量${body.fetchable_content.value}`,'');
 
