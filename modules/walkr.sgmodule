@@ -15,7 +15,7 @@
 
 [Walkr]Settings = script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-settings.js,script-update-interval=-1
 
-[Walkr]修改走路步數無效中 = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/u\/activity,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-pedometer-modify.js
+[Walkr]修改走路步數 = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/u\/activity,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-pedometer-modify.js
 
 [Walkr]取得未持有的特殊飛船 = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/warehouse\/d\/spaceship,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-get-spaceship.js
 

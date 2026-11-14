@@ -1,25 +1,57 @@
-// 上傳調整後的進步器資訊 稍微符合高能量的情境
-// XXX: 似乎無效 暫時擱置
+// Walkr pedometer modify
+// Walkr 依照要轉換給共駕的能量反推步數，上傳對應的走路步數
+// 需搭配 walkr-covert-energy.js，並先手動填寫與執行 walkr-settings.js
+// 流程：App 先上傳 activity(步數) 再上傳 pilots/convert(能量)
+// 本腳本先決定這次要額外轉換的能量並存入 persistentStore，convert 腳本再讀取同一個值
+// 額外能量 = WalkrCovertBaseEnergy + (0~9999)，額外步數 = 額外能量 / WalkrEnergyPerStep (無條件進位)
+// 步數為當天累計值，當天的額外步數會持續累加，跨日後重新計算
+
+const STATE_KEY = 'WalkrPedometerState';
+const RANDOM_ENERGY_RANGE = 10000;
 
 let body = JSON.parse($request.body);
-
-const d = new Date();
-
-let needWalking = d.getHours()*20000;
-let needRunning = Math.floor( Math.random()*400 );
-
-console.log(body);
 let obj = body.updated_objects ?? body.created_objects;
 
-// 24小時制 如未達最低值會以該小時*2000步 如中午十二點走路步數應該是12*2000= 24000 如未達到則會加上2000步後上傳
-if( needWalking > obj[0].walking){
-	obj[0].walking += 2000;
+let convertBaseEnergy = $persistentStore.read('WalkrCovertBaseEnergy');
+let energyPerStep = parseFloat($persistentStore.read('WalkrEnergyPerStep'));
+
+if (!obj || obj.length === 0) {
+	console.log(`🚀 步數修改略過,沒有步數資料`);
+} else if (!isNumeric(convertBaseEnergy) || !(energyPerStep > 0)) {
+	console.log(`🚀 步數修改失敗,未正確填寫轉換能量或能量步數比例`);
+	$notification.post('🚀 Walkr', `步數修改失敗`, '未正確填寫正確數值');
+} else {
+	let state = readState(obj[0].date);
+
+	// 上一筆額外能量尚未被 convert 使用時不重複累加，避免步數與能量不一致
+	if (state.pendingEnergy === 0) {
+		state.pendingEnergy = Math.floor(Math.random() * RANDOM_ENERGY_RANGE) + parseInt(convertBaseEnergy);
+		state.extraSteps += Math.ceil(state.pendingEnergy / energyPerStep);
+	}
+
+	// 步數為當天累計值，需加上當天所有已累加的額外步數，維持遞增
+	obj[0].walking += state.extraSteps;
+	$persistentStore.write(JSON.stringify(state), STATE_KEY);
+
+	console.log(`🚀 步數修改完成 新步數為${obj[0].walking},當天額外步數${state.extraSteps},待轉換能量${state.pendingEnergy}`);
 }
-// 每次隨機增加100步內的跑步
-obj[0].running += needRunning;
 
-console.log(`🚀 步數計算修改 新步數為${obj[0].walking}, 新跑步數為${obj[0].running}`);
-// $notification.post('🚀 Walkr',`步數計算修改`,'');
+$done({ body: JSON.stringify(body) });
 
-$done({body:JSON.stringify(body)});
+// 讀取當天狀態，日期不同時重新計算
+function readState(date) {
+	let saved = null;
+	try {
+		saved = JSON.parse($persistentStore.read(STATE_KEY));
+	} catch (e) {
+		console.log(`🚀 步數狀態讀取失敗,重新計算: ${e}`);
+	}
+	if (!saved || saved.date !== date) {
+		return { date: date, extraSteps: 0, pendingEnergy: 0 };
+	}
+	return saved;
+}
 
+function isNumeric(val) {
+	return /^\d+$/.test(parseInt(val));
+}

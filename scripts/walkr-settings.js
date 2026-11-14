@@ -1,10 +1,16 @@
 // Walkr settings
 // Walkr 參數設定 手動修改數值後 點選執行一次
 
-// 設定轉換給共駕的能量的基礎值
-// 腳本會預設提供給1-10000的隨機值,建議填入不超過150000的數值
-// 例如： 這邊填入80000,則每次轉換時會提供80000+(1~10000)給共駕
-let WalkrCovertBaseEnergy = '150000';
+// 設定轉換給共駕的額外能量的基礎值
+// 腳本會再加上0~9999的隨機值,並加在實際走路轉換的能量上
+// 例如： 這邊填入20000,則每次轉換時會額外提供20000+(0~9999)給共駕
+// 上傳的步數會依下方比例同步增加,數值越大步數越不合理,建議不超過30000
+let WalkrCovertBaseEnergy = '20000';
+
+// 每一步走路可轉換的能量，用來由能量反推上傳的步數(無條件進位)
+// 實測約 1.3 (167步轉換出217能量)
+// 例如： 額外能量20000時,步數會額外增加 20000/1.3 = 15385步
+let WalkrEnergyPerStep = '1.3';
 
 
 // 修改提供給Server的金錢數據 true/false
@@ -36,6 +42,7 @@ let WalkrEpicRewardCubes = 1_200_000;
 
 
 $persistentStore.write(WalkrCovertBaseEnergy, "WalkrCovertBaseEnergy");
+$persistentStore.write(WalkrEnergyPerStep, "WalkrEnergyPerStep");
 $persistentStore.write(WalkrIsExecuteMoneyModify, "WalkrIsExecuteMoneyModify");
 $persistentStore.write(WalkrMoney, "WalkrMoney");
 $persistentStore.write(WalkrIsExecuteCubeModify, "WalkrIsExecuteCubeModify");
