@@ -23,6 +23,10 @@
 
 [Walkr]EPIC獎勵提升 = type=http-response,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/fleets\/\d+\/finish,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-change-epic-reward.js
 
+[Walkr]擷取實驗室資訊 = type=http-request,pattern=https:\/\/production\.sw\.(fourdesireplay|fourdesire)\.(io|com)\/api\/v2\/(labs\/current|comments\?),script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-lab-capture.js
+
+[Walkr]實驗室自動贊助 = type=cron,cronexp="*/30 * * * *",wake-system=1,timeout=60,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-lab-auto-donate.js
+
 
 [MITM]
 hostname = %APPEND% *.fourdesireplay.io, *.fourdesire.com, *.fourdesireplay.com, *.fourdesire.io
