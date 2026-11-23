@@ -18,6 +18,9 @@
 10. `har-test/` 的 HAR 含有 `authorization` token，不能提交。
 11. `modules/walkr.sgmodule` 是 CRLF 換行，用程式改寫後要確認換行沒有被改掉。
 12. 管理介面可以在本機用 node 起一個 server：把 page、api、epic 腳本放進 vm 執行，再用瀏覽器預覽來驗證。
+13. `git add` 只要有一個路徑不存在，整批都不會加入。這次因為這樣，第一個 commit（c47baa8）只包含檔案搬移就推上去了，後來才補上 560762c。commit 前要先用 `git diff --cached --stat` 確認內容。
+14. 用 mock 的 http-request 腳本做管理介面時，要考慮 CSRF：任何網頁都能對 mock 網域送出 no-cors 請求。要求自訂 header 是最簡單的防護。
+15. 每次寫完程式都要跑 `/code-review`。這兩輪各抓到一個真正的問題：傳說結束時 cron 不通知，以及 CSRF。
 
 ## 已確認的機制
 
@@ -72,7 +75,7 @@
 - 今日步數狀態刻意不提供重置：步數是當天累計值，中途重置會讓上傳的步數變少。
 - mock 測試包含 API 白名單、token 不外洩、艦橋預設值、實驗室開關，並用瀏覽器在手機寬度驗證過各分頁。
 
-## 傳說（Epic）自動繳納（已實作，尚未在手機上實測）
+## 傳說（Epic）自動繳納（已實作並推上 GitHub，尚未在手機上實測）
 
 詳細機制與各階段資料見 `docs/walkr-epic-events.md`（使用者之後會補常見傳說的資料）。
 
@@ -94,7 +97,7 @@
 3. 回應 `refresh:true`（步驟完成）時重新讀取，若進入 `path` 接著繳能量。
 4. 第二段：標準模式 2 格繳 1/4、1 格繳 1/8（剩餘量 ≤ 1/8 時只用 1 格）；無限模式 0 格繳滿。
 5. 每個請求間隔 2.5 秒；任一筆失敗就停止。結果存在 `WalkrEpicLastResult`，通知標題 `🚀 Walkr Epic`。
-6. 預覽會顯示飛行時間（`flightLine`）：
+6. 預覽會顯示飛行時間（`flightLines`，回傳多行，第二行起用全形空白縮排）：
    - `fleets/current` 回應中的 `last_consumed_at` 就是讀取的時間，代表伺服器在讀取當下已經結算好燃燒量，`consumed_energy` 是即時值。
    - 燃燒速度是 `required_energy / (path.time × 3600)` 每秒。剩餘時間 = `(required - consumed) / 速度`。
    - `fleet.energy` 不夠燒完剩餘需求時，顯示還能飛多久、還差多少能量。
@@ -111,17 +114,31 @@
 | `WalkrEpicTestAmount` | 測試數量，空白為剩餘量 | 空白 |
 | `WalkrEpicTestHitpoints` | 測試請求的格數 | 1 |
 
-### 使用者手機測試清單（2026-11-23 起）
+### 使用者手機測試清單（2026-11-24 起，使用者測試中）
 
-1. 開一次 Walkr，讓 capture 腳本存下 token 和網址。
-2. 開 `https://walkr.mysurge.com/` 按「預覽」，確認讀得到階段和飛行時間。
+1. 在 Surge 更新 Walkr 模組，開一次 Walkr，讓 capture 腳本存下 token 和網址。
+2. 開 `https://walkr.mysurge.com/` 按「預覽」，確認讀得到階段和飛行時間；在系統分頁確認 token 已擷取。
 3. 用「單次測試繳納」測：currency、virtual、能量各送 0 格或 1 格，再配上很大的數量，看伺服器接不接受、會不會截到剩餘量。
-4. 測試結果回填 `docs/walkr-epic-events.md`；如果 0 格可行，再請使用者把模式切成「無限」。
+4. 實際抵達時間跟預覽的預估做比較。
+5. 測試結果回填 `docs/walkr-epic-events.md`；如果 0 格可行，再請使用者把模式切成「無限」。
+
+### 使用者提供各階段資料時，要拿到的東西
+
+使用者會在新的階段擷取資料。每個階段最好拿到：
+
+- **`fleets/current` 的完整回應**（不能是 304）：用來取得 `event`（`event_type`、`resource_a/b/c`、`label_*`）、`path`（`required_energy`、`time`）和 `hitpoints`。也可以直接看管理介面預覽的結果。
+- **app 的繳納選項畫面截圖**：每種類型（金幣、食物、星球資源、`virtual-*`、能量）各一張，用來補齊標準模式的選項與格數。
+- **繳納的 HAR**（關閉模組時抓）：用來確認新的 `event_type` 的 body 格式。
+
+收到後的處理：
+1. 補進 `docs/walkr-epic-events.md` 的傳說表格，以及 event_type 一覽。
+2. 遇到沒見過的 `event_type`，確認 `parseState`（哪些 key 算需求）與 `planEventDonations`（是否消耗耐力）要不要調整。
+3. 用 HAR 的 `fleets/current` 加進 mock 測試，再跑一次全部情境。
 
 ### 待確認
 
 - **無限模式是否可行**：resources 送 0 格伺服器不擋，currency / virtual / 能量送 0 格、大數量是否接受還沒測。使用者會用單次測試確認，結果要回填到 `docs/walkr-epic-events.md`，必要時調整 `planEventDonations`、`planEnergyDonations`。
 - 標準模式第一段只知道「3 格 = 需求量 1/2」，較小的選項不清楚（virtual-food 用 2 格繳 100/250）。
 - `preparation` 類型（第一階段）沒有繳納紀錄，暫時當作 currency 處理。
-- 測試方式：node mock `$persistentStore`、`$httpClient` 等，以 HAR 的 `fleets/current` 模擬伺服器（clamp、refresh、耐力），共 25 個情境。測試程式放在 session 的 scratchpad，不在 repo 內，下次要重寫 harness。
+- 測試方式：node mock `$persistentStore`、`$httpClient` 等，以 HAR 的 `fleets/current` 模擬伺服器（clamp、refresh、耐力），傳說 25 個情境，加上管理介面 API、艦橋、實驗室開關 13 個情境，共 38 個。測試程式放在 session 的 scratchpad，不在 repo 內，下次要重寫 harness（做法：用 vm 執行腳本，`$httpClient` 接到依 HAR `fleets/current` 模擬的假伺服器）。
 - 實際飛行時間跟預估相差多少還沒驗證。伺服器在短時間內的燃燒量看起來有取整（3 秒內 `consumed_energy` 一直是 1）。
