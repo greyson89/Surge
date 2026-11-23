@@ -65,6 +65,8 @@ const VOTING_CHOICES = {
 const VOTING_KEYS = ["a", "b"];
 const VOTED_EVENTS_KEY = "WalkrEpicVotedEvents";
 const MAX_VOTED_RECORDS = 50;
+// 選擇題投票時間：截止時間 = fleet.started_at（事件開始時間）+ 24 小時（2026-11-24 截圖倒數推得）
+const VOTING_HOURS = 24;
 // 只讀取、不寫入上次結果也不通知的執行方式
 const READ_ONLY_ROUTES = ["status", "raw"];
 
@@ -170,7 +172,7 @@ function parseState(data) {
     // virtual-* 只需要繳物品數量 a，resource_b 不是需求（實測只繳 a 就完成）
     let isVoting = event.event_type == "voting";
     let keys = isVoting ? [] : String(event.event_type).startsWith("virtual-") ? ["a"] : ITEM_KEYS;
-    // 選擇題的選項文字在 label_a/b/c；fleet.value_* 推測為各選項票數、hitpoints.value_* 為自己的投票（尚未以 HAR 確認）
+    // 選擇題的選項文字在 label_a/b/c；fleet.value_* 是各選項票數、hitpoints.value_* 是自己投的選項（2026-11-24 HAR 確認）
     let options = !isVoting ? [] : ITEM_KEYS.filter((key) => event[`label_${key}`]).map((key) => ({
         key: key,
         label: String(event[`label_${key}`]),
@@ -188,6 +190,8 @@ function parseState(data) {
         fleetId: fleet.id,
         eventId: event.id,
         epicId: fleet.epic ? fleet.epic.id : null,
+        startedAt: Number(fleet.started_at) || 0,
+        membersCount: Number(fleet.members_count) || 0,
         eventName: event.name,
         eventDescription: event.description,
         eventType: event.event_type,
@@ -399,9 +403,24 @@ function findVotingOption(state) {
     return { option: option || { key: choice.answer, label: choice[choice.answer] } };
 }
 
+// 剩餘時間與過半票數（超過一半成員投同一項，或時間到才決定路線）
+function votingStatusLine(state, nowMs) {
+    let totalVotes = state.options.reduce((sum, o) => sum + o.votes, 0);
+    let majority = Math.floor(state.membersCount / 2) + 1;
+    let votesText = `已投 ${totalVotes}/${state.membersCount} 人｜過半需 ${majority} 票`;
+    if (state.startedAt <= 0) {
+        return [`⏳ ${votesText}`];
+    }
+    let deadlineMs = (state.startedAt + VOTING_HOURS * 3600) * 1000;
+    let remainingSeconds = (deadlineMs - nowMs) / 1000;
+    let timeText = remainingSeconds > 0 ? `剩 ${formatDuration(remainingSeconds)}（截止 ${formatClock(deadlineMs)}）` : "已到截止時間，等待結算";
+    return [`⏳ ${timeText}`, `${FLIGHT_INDENT}${votesText}`];
+}
+
 function votingLines(state) {
     let options = state.options.length > 0 ? state.options.map((o) => `${o.label} ${o.votes} 票`).join("｜") : "讀不到選項（label_a/b/c 都是空的）";
-    return [`❓ ${state.eventName}｜${state.eventDescription}`, `選項：${options}`, `傳說 id ${state.epicId}｜event id ${state.eventId}`];
+    return [`❓ ${state.eventName}｜${state.eventDescription}`, `選項：${options}`]
+        .concat(votingStatusLine(state, Date.now()), `傳說 id ${state.epicId}｜event id ${state.eventId}`);
 }
 
 // 選擇題：依 VOTING_CHOICES 投票，每題只投一次；由全隊過半數或時間到決定路線，之後才進入能量階段

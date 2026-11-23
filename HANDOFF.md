@@ -103,20 +103,25 @@
    - `fleet.energy` 不夠燒完剩餘需求時，顯示還能飛多久、還差多少能量。
    - event 狀態則顯示下一段需要飛行的時數。
 
-### 選擇題（voting，2026-11-24 新增，尚未實測）
+### 選擇題（voting，2026-11-24 新增，欄位已用真實資料確認，腳本尚未實際投過票）
 
 - 所有傳說的流程（16 個，含選擇題與 A／B 路線的資源比較）整理在 `docs/walkr-epic-routes.md`，來源是使用者提供的簡體截圖 `har-test/epic/傳說任務流程截圖/`，已轉成繁體中文。截圖文字可能與遊戲略有不同（例如截圖「攻打／救他」，遊戲「攻打他／救救他」）。
 - `VOTING_CHOICES[傳說 id]` 每題為 `{ question, a, b, answer }`。**先**用 a、b 分別比對 `label_a`／`label_b`，都沒有命中才用題目比對 `event.name`／`event.description`（遊戲的大標題「要如何採取行動？」可能是各題共用的）。比對時忽略空白、標點與符號，其中一方包含另一方即可。
 - `answer` 是 `"a"`／`"b"`，送出 `value_x:1`、`hitpoints:0`。11 題都已由使用者填好預設路線；留空的題目不會投票，只通知一次。
 - `WalkrEpicVoteEnabled`（管理介面「選擇題自動投票」）關閉時不投票，只通知一次題目與選項；使用者會先關閉，抓到選擇題的資料後再開啟。
+- 預覽與通知會顯示剩餘時間、截止時間（`started_at + VOTING_HOURS`）、已投人數與過半票數（`floor(members_count / 2) + 1`）。以截圖驗證：開始後 7 分鐘顯示「剩 23 小時 53 分」，跟 app 一致。
 - 投票失敗時記錄 `{ failed: 訊息 }`，cron 仍會重試，但同一個錯誤只通知一次。預覽（status）不會發通知。
 - 不管投票結果走哪條路線，之後的事件仍依 `fleets/current` 偵測需求繳納，不受影響。
-- 每題只投一次，紀錄在 `WalkrEpicVotedEvents`（key `fleetId:eventId`，最多 50 筆）；`hitpoints.value_*` 大於 0 也視為已在 app 手動投過（推測，尚未確認）。
+- 每題只投一次，紀錄在 `WalkrEpicVotedEvents`（key `fleetId:eventId`，最多 50 筆）；`hitpoints.value_*` 大於 0 視為已在 app 手動投過（HAR 已確認是自己投的選項）。
 - 投票後回應 `refresh:true`（立即決定）會接著繳能量；否則等過半數或時間到，下一次 cron 進入 `path` 再繳能量。
-- **待確認**：選擇題當下 `fleets/current` 的 200 回應（選項是否在 `label_*`、票數、自己投票的欄位）。取得方式：
-  - 管理介面「原始回應」按鈕（`/api/epic/raw`）：直接顯示完整 JSON，可複製。投票前、投票後各取一次比對。
-  - HAR：模組的「共駕與傳說資料不使用快取」已把 `fleets/current` 加進 `walkr-bridge-no-cache.js`，app 的請求不再帶 `If-None-Match`，HAR 會是 200（要**開著模組**抓）。
-  - 確認後要回頭檢查 `readMyVote` 用 `hitpoints.value_* > 0` 判斷已投票是否正確（code review 留下的待辦）。
+- **已確認（2026-11-24 HAR）**：選項在 `label_a/b`、票數在 `fleet.value_*`、自己投的選項在 `hitpoints.value_*`；截止時間推得是 `fleet.started_at + 24 小時`。詳見 `docs/walkr-epic-events.md` 的選擇題章節。
+- **還沒觀察到**（使用者之後提供，收到再處理）：
+  1. 路線決定後、飛行中（`path`）的「原始回應」：確認 `target_id` 是否依投票結果改變（投票中為 121）、`fleet_histories` 怎麼記錄選擇題結果。
+  2. 抵達分支第一關後的「原始回應」：確認分支事件的 `event_type`、名稱與需求量，核對 `docs/walkr-epic-routes.md`。截圖的 `A.`／`B.` 前綴是整理者加的分類，遊戲內名稱沒有，比對時要拿掉。
+  3. 由腳本實際投出第一票（巨龍王下一題「兩條線索」，使用者會打開自動投票），確認伺服器接受、通知內容正確。
+  4. 再核對一次截止時間是否為 `started_at + 24 小時`（目前只有一筆樣本）。
+  5. 尚未看過投票前的回應，推測 `hitpoints.value_*` 全是 0（腳本依此判斷尚未投票）。
+- 取得方式：管理介面「原始回應」按鈕（`/api/epic/raw`，完整 JSON 可複製，手機上已實際可用）；或開著模組抓 HAR，`fleets/current` 已不帶 `If-None-Match`，實測回 200。
 
 ### 參數
 

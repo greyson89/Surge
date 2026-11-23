@@ -47,7 +47,7 @@
 | `resources` | 星球資源 | a/b/c 三種星球資源 | 0 格，不受限制，可以一次繳滿 |
 | `virtual-coins` | 星球收取的資源，`label_a` 為資源名稱（例如防禦雨傘、放大鏡） | a=數量 | 3 格繳 100（需求量 200 的 1/2） |
 | `virtual-food` | 星球收取的資源，`label_a` 為資源名稱（例如藥草） | a=數量 | 2 格繳 100（剛好是剩餘量，需求量 250） |
-| `voting` | 選擇題，由全隊投票，過半數或時間到才決定路線；`label_a/b/c` 為選項文字（推測） | 選哪一項就送該項 `value_x:1`，其他 0 | 0 格 |
+| `voting` | 選擇題，由全隊投票，過半數或時間到才決定路線；`label_a/b/c` 為選項文字 | 選哪一項就送該項 `value_x:1`，其他 0 | 0 格 |
 | `travelling` | 第二段能量（只出現在請求中） | `energy` | 1/4 需求量用 2 格，1/8 需求量用 1 格 |
 
 `virtual-*` 繳的是星球收取的資源（使用者說明：食物會轉成星球生產的資源，資源再換成 coins），但和 `resources` 不同，會消耗耐力。`resource_b`（4000、400）的意義尚未確認，只繳 `value_a` 就會完成，繳納時不需要用到。
@@ -57,9 +57,13 @@
 截圖：題目「要如何採取行動？」、副標題「攻打他或救救他？」，選項「攻打他」「救救他」，倒數約 24 小時。
 
 - 投票請求（巨龍王 event 120，選「攻打他」）：`event_status:"event"`、`event_type:"voting"`、`event_id:120`、`value_a:1`、`value_b:0`、`value_c:0`、`hitpoints:0`，回應 `{"success":true,"refresh":false}`。
-- 尚未拿到選擇題當下 `fleets/current` 的完整回應（HAR 是 304），以下為推測，待確認：選項文字在 `event.label_a/b/c`、`fleet.value_*` 是各選項票數、`hitpoints.value_*` 是自己投的選項、決定後的路線怎麼呈現（`path.target_id`）。
+- 選擇題當下的 `fleets/current`（2026-11-24 04:18，已投「攻打他」後擷取）：
+  - `event`：`name` 為題目（「要如何採取行動？」）、`description` 為副標題（「攻打他或救救他？」）、`label_a/b` 為選項文字、`resource_*` 都是 null。
+  - `fleet.value_a/b` 是各選項票數（1／0，10 人中只有自己投票）；`hitpoints.value_a/b` 是自己投的選項（`value_a:1`），上一個事件的繳納量不會殘留。
+  - 投票期間就有 `path`（id 104、`target_id` 121、6 小時、36,000 能量）；`event_status` 仍是 `event`。決定路線後 `target_id` 是否改變還沒觀察到。
+  - 回應中沒有截止時間欄位。`fleet.started_at`（02:35:44）是這個事件的開始時間，截圖在 02:42 顯示「剩下 23h 53m」，所以截止時間是 `started_at + 24 小時`（只有一筆樣本）。
 - 腳本要投的路線設定在 `walkr-epic-auto-contribute.js` 的 `VOTING_CHOICES`；所有傳說的選擇題與各路線資源見 `docs/walkr-epic-routes.md`。
-- 選項 A／B 對應 `value_a`／`value_b`（截圖的 `A.`／`B.` 開頭事件就是投票結果的路線，走完後合併回主線）。
+- 選項 A／B 對應 `value_a`／`value_b`（截圖中 `A.`／`B.` 開頭的事件就是投票結果的路線，走完後合併回主線；前綴是整理者加的分類，遊戲內的事件名稱沒有）。
 
 ## 能量選項
 
