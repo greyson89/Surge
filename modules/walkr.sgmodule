@@ -27,6 +27,18 @@
 
 [Walkr]實驗室自動贊助 = type=cron,cronexp="*/30 * * * *",wake-system=1,timeout=60,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-lab-auto-donate.js
 
+[Walkr]傳說自動繳納 = type=cron,cronexp="*/10 * * * *",wake-system=1,timeout=60,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-epic-auto-contribute.js
+
+[Walkr]傳說立即繳納 = script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-epic-auto-contribute.js,argument=run,timeout=60
+
+[Walkr]傳說單次測試 = script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-epic-auto-contribute.js,argument=test,timeout=30
+
+[Walkr]管理介面 = type=http-request,pattern=^https?:\/\/walkr\.mysurge\.com\/?$,requires-body=0,timeout=10,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-config-page.js
+
+[Walkr]管理介面API = type=http-request,pattern=^https?:\/\/walkr\.mysurge\.com\/api\/(read|write),requires-body=1,max-size=0,timeout=10,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-config-api.js
+
+[Walkr]管理介面傳說操作 = type=http-request,pattern=^https?:\/\/walkr\.mysurge\.com\/api\/epic\/,timeout=60,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-epic-auto-contribute.js
+
 
 [MITM]
-hostname = %APPEND% *.fourdesireplay.io, *.fourdesire.com, *.fourdesireplay.com, *.fourdesire.io
+hostname = %APPEND% *.fourdesireplay.io, *.fourdesire.com, *.fourdesireplay.com, *.fourdesire.io, walkr.mysurge.com

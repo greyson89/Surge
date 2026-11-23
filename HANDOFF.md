@@ -1,8 +1,8 @@
 # HANDOFF：Walkr 自動化
 
-更新日期：2026-11-22
+更新日期：2026-11-23
 
-這份文件記錄 Walkr 腳本的分析經驗、目前完成的實驗室自動贊助，以及下一個任務「傳說自動繳納」的規劃。下一次接手時先看這份。
+這份文件記錄 Walkr 腳本的分析經驗、實驗室自動贊助與傳說自動繳納的實作狀態。下一次接手時先看這份。
 
 ## 分析流程（這次確認有效的做法）
 
@@ -47,47 +47,42 @@
 - 已知限制：自動贊助不會扣自己的能量，也拿不到 coins 獎勵（使用者可以接受）；comments 一次只取 30 則。
 - **尚未在手機上實測。**
 
-## 下一個任務：傳說（Epic）自動繳納
+## 傳說（Epic）自動繳納（已實作，尚未在手機上實測）
 
-### 需求（使用者描述）
+詳細機制與各階段資料見 `docs/walkr-epic-events.md`（使用者之後會補常見傳說的資料）。
 
-- 傳說是大家一起參與的多階段任務：繳納資源 → 等待飛船時間 → 進入下一階段……全部完成後才領取所有獎勵。
-- 每個階段內又分兩步：**先繳納資源**（食物、coins、星球生產的資源），**再繳納能量**。
-- 痛點：任務很長，常常忘記繳納，任務就卡在那個階段浪費時間。
-- 目標：仿照實驗室自動贊助，用 cron 定期檢查，該繳的時候自動繳納。
+### 檔案
 
-### 目前已知（來自既有 HAR，尚未針對繳納分析）
+- `scripts/walkr-epic-auto-contribute.js`：一支腳本，四種執行方式
+  - cron `*/10`（`$argument` 空白）：受 `WalkrEpicAutoEnabled` 控制，沒有繳納時只記 log 不通知
+  - `argument=run`：手動立即繳納
+  - `argument=test`：依 `WalkrEpicTestItem/Amount/Hitpoints` 送出單次繳納，顯示伺服器原始回應
+  - http-request `walkr.mysurge.com/api/epic/{run|status|test}`：給管理介面呼叫，`status` 只預覽不繳納
+- `scripts/walkr-config-page.js`、`scripts/walkr-config-api.js`：管理介面 `https://walkr.mysurge.com/`（參考 surge-swingvy），API 只允許讀寫 `WalkrEpic*` key
+- `fleets/current` 的 query 直接沿用 `WalkrLabCurrentUrl` 的裝置參數（實測兩者相同），不需修改 capture 腳本
 
-- `GET /api/v2/fleets/current`：目前參與的艦隊與傳說。沒有參與時回傳 `{"fleet": null}`。主要欄位：
-  - `fleet`：`id`、`energy`、`consumed_energy`、`contribution_amount`、`value_a/b/c`、`event_status`、`epic{id,name}`
-  - `event`：目前階段，含 `identifier`、`event_type`、`resource_a/b/c`、`label_a/b/c`
-  - `path`：`time`（飛行時間）、`required_energy`
-  - `members[]`：`id`、`avatar`、`contribution`、`role`；可以用 avatar 對應出自己
-  - `hitpoints`：`value_a/b/c`、`next_hitpoint_at`
-- `GET /api/v2/epics`：傳說列表；`GET /api/v2/fleets/history`：歷史紀錄。
-- `POST /api/v2/fleets/{id}/finish`：完成時領取獎勵，已有 `walkr-change-epic-reward.js` 在處理。
-- 艦隊留言：`GET /comments?commentable_type=fleet&commentable_id={fleetId}`。
-- 推測（未驗證）：`resource_a/b/c` 和 `value_a/b/c` 應該是階段需求與目前進度；繳納資源時 app 可能也會用 `warehouse/u/player` 同步扣除。
+### 繳納邏輯
 
-### 需要使用者抓的 HAR
+1. `GET fleets/current`；`event_status == "event"` 為第一段、`"path"` 為第二段。
+2. 第一段：`resources` 一律 0 格繳滿；其他類型標準模式每項用 3 格繳 `min(需求量 1/2, 剩餘量)`，無限模式 0 格繳滿。`virtual-*` 只算 `resource_a`。
+3. 回應 `refresh:true`（步驟完成）時重新讀取，若進入 `path` 接著繳能量。
+4. 第二段：標準模式 2 格繳 1/4、1 格繳 1/8（剩餘量 ≤ 1/8 時只用 1 格）；無限模式 0 格繳滿。
+5. 每個請求間隔 2.5 秒；任一筆失敗就停止。結果存在 `WalkrEpicLastResult`，通知標題 `🚀 Walkr Epic`。
 
-請在**關閉 Walkr 模組**的狀態下抓，每種情況最好各一份：
+### 參數
 
-1. 進入傳說畫面，查看目前階段（取得 `fleets/current` 的完整內容，避免拿到 304）。
-2. 繳納第一步的資源，每一種資源各一次：食物、coins、星球生產的資源（每種格式可能不同）。
-3. 繳納第二步的能量。
-4. 如果可以，也抓「階段完成、等待飛船中」和「下一階段開始」時的 `fleets/current`。
+| key | 說明 | 預設 |
+|---|---|---|
+| `WalkrEpicAutoEnabled` | cron 是否執行 | true |
+| `WalkrEpicMode` | `standard` / `unlimited` | standard |
+| `WalkrEpicSharePercent` | 第一段每項自己最多繳需求量的 %（讓隊友有機會貢獻），能量不受限制 | 100 |
+| `WalkrEpicTestItem` | 測試項目 a/b/c/energy，空白自動 | 空白 |
+| `WalkrEpicTestAmount` | 測試數量，空白為剩餘量 | 空白 |
+| `WalkrEpicTestHitpoints` | 測試請求的格數 | 1 |
 
-### 分析時要確認的問題
+### 待確認
 
-- 繳納 API 的端點與 body，以及資源種類怎麼表示（key、identifier，或 a/b/c）。
-- 單次繳納量有沒有上限；`fleets/current` 中哪個欄位代表「還差多少」。
-- 怎麼判斷目前在「資源」還是「能量」步驟，以及什麼時候在「等待飛船」（不應該繳納）。
-- 繳納資源後 app 是否用 `warehouse/u/player` 扣除。如果是，自動繳納不會扣到本機資源，要評估這樣是否可以接受。
-- 自己的資源不足時，伺服器會不會拒絕。
-- 是否有角色限制（例如只有隊長能推進階段）。
-
-### 實作方向（等 HAR 分析後再確認）
-
-- 沿用 `WalkrToken`，可能需要讓 capture 腳本也擷取 `fleets/current` 的網址，新增時注意不要跟既有的 pattern 重疊。
-- 新增 cron 腳本：讀取 `fleets/current` → 判斷階段與步驟 → 繳納 → 發通知（格式比照 Auto Donate），同一階段要防止重送。
+- **無限模式是否可行**：resources 送 0 格伺服器不擋，currency / virtual / 能量送 0 格、大數量是否接受還沒測。使用者會用單次測試確認，結果要回填到 `docs/walkr-epic-events.md`，必要時調整 `planEventDonations`、`planEnergyDonations`。
+- 標準模式第一段只知道「3 格 = 需求量 1/2」，較小的選項不清楚（virtual-food 用 2 格繳 100/250）。
+- `preparation` 類型（第一階段）沒有繳納紀錄，暫時當作 currency 處理。
+- 測試方式：node mock `$persistentStore`、`$httpClient` 等，以 HAR 的 `fleets/current` 模擬伺服器（clamp、refresh、耐力），測試程式不在 repo 內。
