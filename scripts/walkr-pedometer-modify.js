@@ -1,6 +1,6 @@
 // Walkr pedometer modify
 // Walkr 依照要轉換給共駕的能量反推步數，上傳對應的走路步數
-// 需搭配 walkr-covert-energy.js，並先手動填寫與執行 walkr-settings.js
+// 需搭配 walkr-covert-energy.js，並先在管理介面（https://walkr.mysurge.com/#pilot）設定參數
 // 流程：App 先上傳 activity(步數) 再上傳 pilots/convert(能量)
 // 本腳本先決定這次要額外轉換的能量並存入 persistentStore，convert 腳本再讀取同一個值
 // 額外能量 = WalkrCovertBaseEnergy + (0~9999)，額外步數 = 額外能量 / WalkrEnergyPerStep (無條件進位)

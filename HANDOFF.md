@@ -1,6 +1,6 @@
 # HANDOFF：Walkr 自動化
 
-更新日期：2026-11-23
+更新日期：2026-11-24
 
 這份文件記錄 Walkr 腳本的分析經驗、實驗室自動贊助與傳說自動繳納的實作狀態。下一次接手時先看這份。
 
@@ -53,6 +53,25 @@
 - 已知限制：自動贊助不會扣自己的能量，也拿不到 coins 獎勵（使用者可以接受）；comments 一次只取 30 則。
 - **尚未在手機上實測。**
 
+## 管理介面（2026-11-24，取代 Settings 腳本）
+
+`https://walkr.mysurge.com/`，用頂部 tab 切換分頁，網址 hash（`#epic`、`#pilot`、`#account`、`#lab`、`#system`）會記住目前分頁。`scripts/walkr-settings.js` 已移到 `scripts/deprecated/`，也從模組移除。手機上原本用 Settings 寫入的值仍然留在 persistentStore，介面會直接讀出來。
+
+| 分頁 | 內容與參數 |
+|---|---|
+| 🚀 傳說 | 繳納狀態（預覽、立即繳納）、自動繳納設定、單次測試；傳說獎勵 `WalkrEpicRewardType/Money/Cubes` |
+| 👟 共駕步數 | `WalkrCovertBaseEnergy`、`WalkrEnergyPerStep`（顯示預估額外步數）；今日步數狀態（唯讀）；艦橋 `WalkrBridgeDisplayEnergy`（畫面顯示值，預設 160000）、`WalkrBridgeClaimEnergy`（實際領取值，預設 80000） |
+| 💰 帳號資源 | `WalkrIsExecuteMoneyModify`、`WalkrMoney`、`WalkrIsExecuteCubeModify`、`WalkrCube`；危險區塊，開啟和儲存前都會確認 |
+| 🧪 實驗室 | `WalkrLabAutoEnabled`（預設開啟）；顯示玩家 id、已處理輪次，可以清除 `WalkrDonateHandledRounds` |
+| ⚙️ 系統 | token 是否擷取、到期時間（從 JWT 的 `exp` 解出）、帳號 id、App 版本、UA、網址擷取狀態 |
+
+- 頁面的一般設定由 `FORMS` 描述欄位，`renderForm` 產生表單。toggle 點擊後立即寫入，其他欄位按「儲存」才寫入，並會驗證是否必填、整數、範圍。
+- `walkr-config-api.js` 只允許白名單內的參數：`WRITABLE_KEYS` 可讀寫，`READONLY_KEYS` 只能讀，`RESETTABLE_KEYS` 只能清除。`/api/status` 回傳摘要，token 不會原樣回傳。新增參數時要同時改白名單。
+- 防 CSRF：頁面所有請求都帶 `X-Walkr-Admin: 1`。API 的 write、reset 與 epic 的 http-request 路線沒有這個 header 就拒絕（跨域送出自訂 header 會觸發 preflight 而被擋）。
+- 步數狀態的 `date` 是 app 上傳步數時的當地午夜 epoch 秒，不是今天的話，介面會標示「前次紀錄」。
+- 今日步數狀態刻意不提供重置：步數是當天累計值，中途重置會讓上傳的步數變少。
+- mock 測試包含 API 白名單、token 不外洩、艦橋預設值、實驗室開關，並用瀏覽器在手機寬度驗證過各分頁。
+
 ## 傳說（Epic）自動繳納（已實作，尚未在手機上實測）
 
 詳細機制與各階段資料見 `docs/walkr-epic-events.md`（使用者之後會補常見傳說的資料）。
@@ -64,7 +83,7 @@
   - `argument=run`：手動立即繳納
   - `argument=test`：依 `WalkrEpicTestItem/Amount/Hitpoints` 送出單次繳納，顯示伺服器原始回應
   - http-request `walkr.mysurge.com/api/epic/{run|status|test}`：給管理介面呼叫，`status` 只預覽不繳納
-- `scripts/walkr-config-page.js`、`scripts/walkr-config-api.js`：管理介面 `https://walkr.mysurge.com/`（參考 surge-swingvy），API 只允許讀寫 `WalkrEpic*` key
+- `scripts/walkr-config-page.js`、`scripts/walkr-config-api.js`：管理介面，詳見下方「管理介面」章節
 - 「立即繳納」和 cron 一樣依 `WalkrEpicMode` 繳納，差別只在不受 `WalkrEpicAutoEnabled` 開關限制。
 - `fleets/current` 的 query 直接沿用 `WalkrLabCurrentUrl` 的裝置參數（實測兩者相同），不需修改 capture 腳本
 

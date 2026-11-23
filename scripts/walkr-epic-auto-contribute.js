@@ -27,6 +27,7 @@ const STANDARD_EVENT_RATIO = 1 / 2;
 const DEVICE_PARAM_KEYS = ["client_version", "country_code", "device_model", "locale", "os_version", "platform", "timezone"];
 const ITEM_KEYS = ["a", "b", "c"];
 const LAST_RESULT_KEY = "WalkrEpicLastResult";
+const FLIGHT_INDENT = "　　";
 
 function httpError(message, status) {
     let error = new Error(message);
@@ -311,8 +312,7 @@ async function contribute(context, settings, isDryRun) {
 
 function previewResult(state, planLines, settings) {
     let lines = planLines.length > 0 ? planLines.map((line) => `🔍 ${line}`) : [`⏸ ${describeWaiting(state, settings)}`];
-    let flight = flightLine(state, Date.now());
-    return { subtitle: `${state.eventName}｜預覽`, lines: lines.concat(progressLine(state), flight ? [flight] : []) };
+    return { subtitle: `${state.eventName}｜預覽`, lines: lines.concat(progressLine(state), flightLines(state, Date.now())) };
 }
 
 function formatDuration(seconds) {
@@ -329,29 +329,34 @@ function formatClock(ms) {
 
 // 飛行剩餘時間：fleets/current 讀取當下伺服器已結算燃燒量（last_consumed_at 等於讀取時間），
 // 能量以 required_energy / time 小時的固定速度燃燒；能量不夠時飛船會在燒完時停住
-function flightLine(state, nowMs) {
+// 回傳多行，第二行起以 FLIGHT_INDENT 縮排，避免時間在窄螢幕被拆開
+function flightLines(state, nowMs) {
     let { required, stored, consumed, hours } = state.energy;
     if (required <= 0 || hours <= 0) {
-        return null;
+        return [];
     }
     if (state.status == "event") {
-        return `🛸 第一段完成後需飛行 ${hours} 小時（${formatNumber(required)} 能量）`;
+        return [`🛸 第一段完成後需飛行 ${hours} 小時`, `${FLIGHT_INDENT}需要 ${formatNumber(required)} 能量`];
     }
     if (state.status != "path") {
-        return null;
+        return [];
     }
     let ratePerSecond = required / (hours * 3600);
     let remainingBurn = required - consumed;
     if (stored >= remainingBurn) {
         let seconds = remainingBurn / ratePerSecond;
-        return `🛸 預計 ${formatDuration(seconds)}後抵達下一階段（${formatClock(nowMs + seconds * 1000)}）`;
+        return [`🛸 預計 ${formatDuration(seconds)}後抵達下一階段`, `${FLIGHT_INDENT}抵達時間：${formatClock(nowMs + seconds * 1000)}`];
     }
     let stallSeconds = stored / ratePerSecond;
     let fullSeconds = remainingBurn / ratePerSecond;
     if (stored <= 0) {
-        return `🛸 飛船已停住，還差 ${formatNumber(remainingBurn)} 能量；補滿後約 ${formatDuration(fullSeconds)}抵達`;
+        return [`🛸 飛船已停住，還差 ${formatNumber(remainingBurn)} 能量`, `${FLIGHT_INDENT}補滿後約 ${formatDuration(fullSeconds)}抵達`];
     }
-    return `🛸 能量只夠再飛 ${formatDuration(stallSeconds)}，還差 ${formatNumber(remainingBurn - stored)} 能量；補滿後約 ${formatDuration(fullSeconds)}抵達`;
+    return [
+        `🛸 能量只夠再飛 ${formatDuration(stallSeconds)}`,
+        `${FLIGHT_INDENT}還差 ${formatNumber(remainingBurn - stored)} 能量`,
+        `${FLIGHT_INDENT}補滿後約 ${formatDuration(fullSeconds)}抵達`,
+    ];
 }
 
 function buildSummary(state, results, settings) {
@@ -402,8 +407,16 @@ async function testDonate(context) {
     };
 }
 
+// 管理介面的請求需帶 X-Walkr-Admin header，避免其他網站用 GET 觸發繳納（CSRF）
+function hasAdminHeader(headers) {
+    return Object.keys(headers || {}).some((key) => key.toLowerCase() == "x-walkr-admin" && headers[key] == "1");
+}
+
 function readRoute() {
     if (typeof $request != "undefined") {
+        if (!hasAdminHeader($request.headers)) {
+            return "forbidden";
+        }
         let match = $request.url.match(/\/api\/epic\/(run|status|test)/);
         return match ? match[1] : "unknown";
     }
@@ -421,6 +434,9 @@ function buildContext() {
 
 async function runRoute(route) {
     let settings = readSettings();
+    if (route == "forbidden") {
+        throw new Error("請從管理介面操作");
+    }
     if (route == "cron" && !settings.isAutoEnabled) {
         return { subtitle: "自動執行已關閉", lines: [], isSkipped: true };
     }

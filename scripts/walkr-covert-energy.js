@@ -1,6 +1,6 @@
 // Walkr walking energy covert modify for co-pilots
 // Walkr 走路轉換能量修改 非個人使用 提供給其他共駕獲取
-// 需先手動填寫與執行walkr-settings.js
+// 需先在管理介面（https://walkr.mysurge.com/#pilot）設定參數
 // 優先使用 walkr-pedometer-modify.js 已依步數決定的能量，讓步數與能量一致
 
 const STATE_KEY = 'WalkrPedometerState';

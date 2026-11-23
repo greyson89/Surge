@@ -1,6 +1,7 @@
 // Walkr lab auto donate
 // Walkr 實驗室自動贊助：定期檢查實驗室成員的贊助需求，補滿自己本輪可贊助的次數
 // 需先開啟一次 app 的實驗室畫面，讓 walkr-lab-capture.js 存下 token 與請求網址
+// WalkrLabAutoEnabled 為 false 時不執行（管理介面可切換），未設定時視為開啟
 // 注意：能量扣除與 coins 獎勵是 app 本機計算後同步，自動贊助不會反映到自己的帳號資源
 
 const API_BASE = "https://production.sw.fourdesire.com/api/v2";
@@ -225,6 +226,11 @@ async function main() {
     notify(summary.subtitle, summary.body);
 }
 
-main()
-    .catch((error) => notify(error.message))
-    .finally(() => $done());
+if ($persistentStore.read("WalkrLabAutoEnabled") == "false") {
+    console.log("🚀 實驗室自動贊助已關閉");
+    $done();
+} else {
+    main()
+        .catch((error) => notify(error.message))
+        .finally(() => $done());
+}
