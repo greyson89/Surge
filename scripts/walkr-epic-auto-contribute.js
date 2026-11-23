@@ -147,6 +147,9 @@ function parseState(data) {
         energy: {
             required: Number(path && path.required_energy) || 0,
             donated: (Number(fleet.energy) || 0) + (Number(fleet.consumed_energy) || 0),
+            stored: Number(fleet.energy) || 0,
+            consumed: Number(fleet.consumed_energy) || 0,
+            hours: Number(path && path.time) || 0,
         },
     };
 }
@@ -308,7 +311,47 @@ async function contribute(context, settings, isDryRun) {
 
 function previewResult(state, planLines, settings) {
     let lines = planLines.length > 0 ? planLines.map((line) => `🔍 ${line}`) : [`⏸ ${describeWaiting(state, settings)}`];
-    return { subtitle: `${state.eventName}｜預覽`, lines: lines.concat(progressLine(state)) };
+    let flight = flightLine(state, Date.now());
+    return { subtitle: `${state.eventName}｜預覽`, lines: lines.concat(progressLine(state), flight ? [flight] : []) };
+}
+
+function formatDuration(seconds) {
+    let minutes = Math.ceil(seconds / 60);
+    let hours = Math.floor(minutes / 60);
+    return hours > 0 ? `${hours} 小時 ${minutes % 60} 分` : `${minutes} 分`;
+}
+
+function formatClock(ms) {
+    let date = new Date(ms);
+    let pad = (n) => String(n).padStart(2, "0");
+    return `${date.getMonth() + 1}/${date.getDate()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+// 飛行剩餘時間：fleets/current 讀取當下伺服器已結算燃燒量（last_consumed_at 等於讀取時間），
+// 能量以 required_energy / time 小時的固定速度燃燒；能量不夠時飛船會在燒完時停住
+function flightLine(state, nowMs) {
+    let { required, stored, consumed, hours } = state.energy;
+    if (required <= 0 || hours <= 0) {
+        return null;
+    }
+    if (state.status == "event") {
+        return `🛸 第一段完成後需飛行 ${hours} 小時（${formatNumber(required)} 能量）`;
+    }
+    if (state.status != "path") {
+        return null;
+    }
+    let ratePerSecond = required / (hours * 3600);
+    let remainingBurn = required - consumed;
+    if (stored >= remainingBurn) {
+        let seconds = remainingBurn / ratePerSecond;
+        return `🛸 預計 ${formatDuration(seconds)}後抵達下一階段（${formatClock(nowMs + seconds * 1000)}）`;
+    }
+    let stallSeconds = stored / ratePerSecond;
+    let fullSeconds = remainingBurn / ratePerSecond;
+    if (stored <= 0) {
+        return `🛸 飛船已停住，還差 ${formatNumber(remainingBurn)} 能量；補滿後約 ${formatDuration(fullSeconds)}抵達`;
+    }
+    return `🛸 能量只夠再飛 ${formatDuration(stallSeconds)}，還差 ${formatNumber(remainingBurn - stored)} 能量；補滿後約 ${formatDuration(fullSeconds)}抵達`;
 }
 
 function buildSummary(state, results, settings) {

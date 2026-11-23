@@ -12,6 +12,12 @@
 4. 從回應 JSON 找出請求參數的來源，不要只看請求 body 就下結論。
 5. 用 HAR 的實際資料，在 node 裡 mock `$persistentStore`、`$httpClient`、`$notification` 和 `$done` 來模擬腳本。正常、失敗、資料缺少的情況都要測。
 6. 抓 HAR 時要留意 `304`：回應會沒有 body。需要內容時，用舊的 HAR 或請使用者重新抓。
+7. HAR 的 entries **不一定照時間排序**（這次的傳說 HAR 是倒序），分析或取樣時要先依 `startedDateTime` 排序。
+8. 收到 HAR 先比對檔案是否重複（`cmp`）。這次 `繳納三項資源然後繳納能量.har` 其實是實驗室的 HAR。
+9. 遊戲名詞的意思以使用者的說明為準，不要自己從欄位名稱推測。例如 `virtual-*` 是星球收取的資源，不是「虛擬物品」。
+10. `har-test/` 的 HAR 含有 `authorization` token，不能提交。
+11. `modules/walkr.sgmodule` 是 CRLF 換行，用程式改寫後要確認換行沒有被改掉。
+12. 管理介面可以在本機用 node 起一個 server：把 page、api、epic 腳本放進 vm 執行，再用瀏覽器預覽來驗證。
 
 ## 已確認的機制
 
@@ -59,6 +65,7 @@
   - `argument=test`：依 `WalkrEpicTestItem/Amount/Hitpoints` 送出單次繳納，顯示伺服器原始回應
   - http-request `walkr.mysurge.com/api/epic/{run|status|test}`：給管理介面呼叫，`status` 只預覽不繳納
 - `scripts/walkr-config-page.js`、`scripts/walkr-config-api.js`：管理介面 `https://walkr.mysurge.com/`（參考 surge-swingvy），API 只允許讀寫 `WalkrEpic*` key
+- 「立即繳納」和 cron 一樣依 `WalkrEpicMode` 繳納，差別只在不受 `WalkrEpicAutoEnabled` 開關限制。
 - `fleets/current` 的 query 直接沿用 `WalkrLabCurrentUrl` 的裝置參數（實測兩者相同），不需修改 capture 腳本
 
 ### 繳納邏輯
@@ -68,6 +75,11 @@
 3. 回應 `refresh:true`（步驟完成）時重新讀取，若進入 `path` 接著繳能量。
 4. 第二段：標準模式 2 格繳 1/4、1 格繳 1/8（剩餘量 ≤ 1/8 時只用 1 格）；無限模式 0 格繳滿。
 5. 每個請求間隔 2.5 秒；任一筆失敗就停止。結果存在 `WalkrEpicLastResult`，通知標題 `🚀 Walkr Epic`。
+6. 預覽會顯示飛行時間（`flightLine`）：
+   - `fleets/current` 回應中的 `last_consumed_at` 就是讀取的時間，代表伺服器在讀取當下已經結算好燃燒量，`consumed_energy` 是即時值。
+   - 燃燒速度是 `required_energy / (path.time × 3600)` 每秒。剩餘時間 = `(required - consumed) / 速度`。
+   - `fleet.energy` 不夠燒完剩餘需求時，顯示還能飛多久、還差多少能量。
+   - event 狀態則顯示下一段需要飛行的時數。
 
 ### 參數
 
@@ -80,9 +92,17 @@
 | `WalkrEpicTestAmount` | 測試數量，空白為剩餘量 | 空白 |
 | `WalkrEpicTestHitpoints` | 測試請求的格數 | 1 |
 
+### 使用者手機測試清單（2026-11-23 起）
+
+1. 開一次 Walkr，讓 capture 腳本存下 token 和網址。
+2. 開 `https://walkr.mysurge.com/` 按「預覽」，確認讀得到階段和飛行時間。
+3. 用「單次測試繳納」測：currency、virtual、能量各送 0 格或 1 格，再配上很大的數量，看伺服器接不接受、會不會截到剩餘量。
+4. 測試結果回填 `docs/walkr-epic-events.md`；如果 0 格可行，再請使用者把模式切成「無限」。
+
 ### 待確認
 
 - **無限模式是否可行**：resources 送 0 格伺服器不擋，currency / virtual / 能量送 0 格、大數量是否接受還沒測。使用者會用單次測試確認，結果要回填到 `docs/walkr-epic-events.md`，必要時調整 `planEventDonations`、`planEnergyDonations`。
 - 標準模式第一段只知道「3 格 = 需求量 1/2」，較小的選項不清楚（virtual-food 用 2 格繳 100/250）。
 - `preparation` 類型（第一階段）沒有繳納紀錄，暫時當作 currency 處理。
-- 測試方式：node mock `$persistentStore`、`$httpClient` 等，以 HAR 的 `fleets/current` 模擬伺服器（clamp、refresh、耐力），測試程式不在 repo 內。
+- 測試方式：node mock `$persistentStore`、`$httpClient` 等，以 HAR 的 `fleets/current` 模擬伺服器（clamp、refresh、耐力），共 25 個情境。測試程式放在 session 的 scratchpad，不在 repo 內，下次要重寫 harness。
+- 實際飛行時間跟預估相差多少還沒驗證。伺服器在短時間內的燃燒量看起來有取整（3 秒內 `consumed_energy` 一直是 1）。
