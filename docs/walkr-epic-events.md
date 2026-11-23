@@ -2,7 +2,7 @@
 
 整理自 `har-test/epic/` 與 `har-test/*.har` 的 `GET fleets/current`、`POST fleets/{id}/donate`。之後取得新的傳說資料再補進表格。
 
-更新日期：2026-11-23
+更新日期：2026-11-24
 
 ## 階段結構
 
@@ -47,9 +47,19 @@
 | `resources` | 星球資源 | a/b/c 三種星球資源 | 0 格，不受限制，可以一次繳滿 |
 | `virtual-coins` | 星球收取的資源，`label_a` 為資源名稱（例如防禦雨傘、放大鏡） | a=數量 | 3 格繳 100（需求量 200 的 1/2） |
 | `virtual-food` | 星球收取的資源，`label_a` 為資源名稱（例如藥草） | a=數量 | 2 格繳 100（剛好是剩餘量，需求量 250） |
+| `voting` | 選擇題，由全隊投票，過半數或時間到才決定路線；`label_a/b/c` 為選項文字（推測） | 選哪一項就送該項 `value_x:1`，其他 0 | 0 格 |
 | `travelling` | 第二段能量（只出現在請求中） | `energy` | 1/4 需求量用 2 格，1/8 需求量用 1 格 |
 
 `virtual-*` 繳的是星球收取的資源（使用者說明：食物會轉成星球生產的資源，資源再換成 coins），但和 `resources` 不同，會消耗耐力。`resource_b`（4000、400）的意義尚未確認，只繳 `value_a` 就會完成，繳納時不需要用到。
+
+## 選擇題（voting）
+
+截圖：題目「要如何採取行動？」、副標題「攻打他或救救他？」，選項「攻打他」「救救他」，倒數約 24 小時。
+
+- 投票請求（巨龍王 event 120，選「攻打他」）：`event_status:"event"`、`event_type:"voting"`、`event_id:120`、`value_a:1`、`value_b:0`、`value_c:0`、`hitpoints:0`，回應 `{"success":true,"refresh":false}`。
+- 尚未拿到選擇題當下 `fleets/current` 的完整回應（HAR 是 304），以下為推測，待確認：選項文字在 `event.label_a/b/c`、`fleet.value_*` 是各選項票數、`hitpoints.value_*` 是自己投的選項、決定後的路線怎麼呈現（`path.target_id`）。
+- 腳本要投的路線設定在 `walkr-epic-auto-contribute.js` 的 `VOTING_CHOICES`；所有傳說的選擇題與各路線資源見 `docs/walkr-epic-routes.md`。
+- 選項 A／B 對應 `value_a`／`value_b`（截圖的 `A.`／`B.` 開頭事件就是投票結果的路線，走完後合併回主線）。
 
 ## 能量選項
 

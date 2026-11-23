@@ -6,10 +6,11 @@
 //   cron（$argument 空白）：受「自動執行」開關控制
 //   $argument=run：手動立即繳納，不受開關控制
 //   $argument=test：依 WalkrEpicTest* 參數送出單次繳納，用來測試伺服器限制
-//   http-request（管理介面）：/api/epic/run、/api/epic/status（只預覽不繳納）、/api/epic/test
+//   http-request（管理介面）：/api/epic/run、/api/epic/status（只預覽不繳納）、/api/epic/test、/api/epic/raw（fleets/current 原始回應）
 //
 // 參數（persistentStore，可由管理介面修改）：
 //   WalkrEpicAutoEnabled   true/false，cron 是否執行，預設 true
+//   WalkrEpicVoteEnabled   true/false，選擇題是否自動投票，預設 true；關閉時只通知一次題目與選項
 //   WalkrEpicMode          standard（依耐力規則）/unlimited（0 格、一次繳滿剩餘量），預設 standard
 //   WalkrEpicSharePercent  第一段每一項自己最多繳需求量的幾 %（1~100），預設 100；能量不受此限制
 //   WalkrEpicTestItem      a/b/c/energy，空白為自動選擇目前步驟第一個未完成項目
@@ -28,6 +29,44 @@ const DEVICE_PARAM_KEYS = ["client_version", "country_code", "device_model", "lo
 const ITEM_KEYS = ["a", "b", "c"];
 const LAST_RESULT_KEY = "WalkrEpicLastResult";
 const FLIGHT_INDENT = "　　";
+
+// 選擇題（event_type = voting）要投的路線，依傳說 id（fleet.epic.id）分組
+// 題目與選項整理自截圖（docs/walkr-epic-routes.md，含各路線的資源比較），可能與遊戲文字略有不同，所以比對時：
+//   question 與 event.name 或 event.description 相同，或 a、b 分別與 label_a、label_b 相同，就算同一題
+//   「相同」是忽略空白與標點後，其中一方包含另一方（例如「救他」與「救救他」）
+// answer："a" 或 "b"，要投的路線（對應截圖的 A. / B.）；空字串表示不投票，只通知一次
+const VOTING_CHOICES = {
+    // 來自故鄉的思念
+    5: [{ question: "憤怒的史萊姆", a: "反擊", b: "賄賂", answer: "b" }],
+    // 被綁架的工程師
+    6: [{ question: "兩條線索", a: "先檢查看看", b: "勇往直前", answer: "a" }],
+    // 中國殭屍與西洋殭屍
+    10: [{ question: "打造太空船", a: "大龍船", b: "飛行木鳥", answer: "b" }],
+    // 征討熔岩山脈的憤怒巨龍王
+    12: [
+        { question: "要如何採取行動", a: "攻打", b: "救他", answer: "a" },
+        { question: "兩條線索", a: "陸路出發", b: "水路出發", answer: "b" },
+    ],
+    // DFR 工廠之旅
+    14: [{ question: "收到訊息", a: "女王的密函", b: "博士的來信", answer: "b" }],
+    // 小酒館的對決
+    15: [{ question: "路上遭遇到賊搶劫", a: "抵抗", b: "賄賂", answer: "b" }],
+    // 解放被封印的年獸
+    17: [
+        { question: "探索被封印的謎之怪物", a: "北風森林", b: "南海海域", answer: "a" },
+        { question: "巫師谷的入口", a: "左邊大門", b: "右邊大門", answer: "a" },
+    ],
+    // 來自月球的神祕信號
+    19: [
+        { question: "岔路難題", a: "七彩水晶宇宙道路", b: "黑曜石宇宙道路", answer: "b" },
+        { question: "靠食物還是靠武力", a: "做草藥蛋糕", b: "戳破泡泡路障", answer: "a" },
+    ],
+};
+const VOTING_KEYS = ["a", "b"];
+const VOTED_EVENTS_KEY = "WalkrEpicVotedEvents";
+const MAX_VOTED_RECORDS = 50;
+// 只讀取、不寫入上次結果也不通知的執行方式
+const READ_ONLY_ROUTES = ["status", "raw"];
 
 function httpError(message, status) {
     let error = new Error(message);
@@ -104,6 +143,7 @@ function readSettings() {
     let percent = Number($persistentStore.read("WalkrEpicSharePercent"));
     return {
         isAutoEnabled: $persistentStore.read("WalkrEpicAutoEnabled") != "false",
+        isVoteEnabled: $persistentStore.read("WalkrEpicVoteEnabled") != "false",
         isUnlimited: $persistentStore.read("WalkrEpicMode") == "unlimited",
         sharePercent: percent >= 1 && percent <= 100 ? percent : 100,
     };
@@ -128,7 +168,15 @@ function parseState(data) {
     let { fleet, event, path } = data;
     let hitpoints = data.hitpoints || {};
     // virtual-* 只需要繳物品數量 a，resource_b 不是需求（實測只繳 a 就完成）
-    let keys = String(event.event_type).startsWith("virtual-") ? ["a"] : ITEM_KEYS;
+    let isVoting = event.event_type == "voting";
+    let keys = isVoting ? [] : String(event.event_type).startsWith("virtual-") ? ["a"] : ITEM_KEYS;
+    // 選擇題的選項文字在 label_a/b/c；fleet.value_* 推測為各選項票數、hitpoints.value_* 為自己的投票（尚未以 HAR 確認）
+    let options = !isVoting ? [] : ITEM_KEYS.filter((key) => event[`label_${key}`]).map((key) => ({
+        key: key,
+        label: String(event[`label_${key}`]),
+        votes: Number(fleet[`value_${key}`]) || 0,
+        mine: Number(hitpoints[`value_${key}`]) || 0,
+    }));
     let items = keys.filter((key) => event[`resource_${key}`] != null).map((key) => ({
         key: key,
         label: itemLabel(event, key),
@@ -139,8 +187,11 @@ function parseState(data) {
     return {
         fleetId: fleet.id,
         eventId: event.id,
+        epicId: fleet.epic ? fleet.epic.id : null,
         eventName: event.name,
+        eventDescription: event.description,
         eventType: event.event_type,
+        options: options,
         status: data.event_status,
         hitpoints: Number(hitpoints.hitpoints) || 0,
         nextHitpointCountdown: hitpoints.next_hitpoint_countdown,
@@ -276,7 +327,124 @@ function progressLine(state) {
     if (state.status == "path") {
         return `能量 ${formatNumber(Math.min(state.energy.donated, state.energy.required))}/${formatNumber(state.energy.required)}`;
     }
+    if (state.eventType == "voting") {
+        return state.options.map((o) => `${o.label} ${o.votes} 票`).join("｜");
+    }
     return state.items.map((item) => `${item.label} ${formatNumber(item.current)}/${formatNumber(item.required)}`).join("｜");
+}
+
+function readVoteRecords() {
+    try {
+        return JSON.parse($persistentStore.read(VOTED_EVENTS_KEY) || "{}") || {};
+    } catch (error) {
+        return {};
+    }
+}
+
+function writeVoteRecord(state, record) {
+    let records = readVoteRecords();
+    delete records[`${state.fleetId}:${state.eventId}`];
+    records[`${state.fleetId}:${state.eventId}`] = record;
+    let keys = Object.keys(records);
+    keys.slice(0, Math.max(0, keys.length - MAX_VOTED_RECORDS)).forEach((key) => delete records[key]);
+    $persistentStore.write(JSON.stringify(records), VOTED_EVENTS_KEY);
+}
+
+// 已投票的選項文字：腳本投過的紀錄優先，其次是 hitpoints.value_*（在 app 手動投票的情況）
+function readMyVote(state) {
+    let record = readVoteRecords()[`${state.fleetId}:${state.eventId}`];
+    if (record && record.voted) {
+        return record.voted;
+    }
+    let mine = state.options.find((option) => option.mine > 0);
+    return mine ? mine.label : null;
+}
+
+function normalizeText(text) {
+    return String(text || "").replace(/[\s\p{P}\p{S}]/gu, "");
+}
+
+function isSimilarText(left, right) {
+    let a = normalizeText(left);
+    let b = normalizeText(right);
+    return a !== "" && b !== "" && (a.includes(b) || b.includes(a));
+}
+
+function isSameOptions(choice, state) {
+    return VOTING_KEYS.every((key) => {
+        let option = state.options.find((o) => o.key == key);
+        return option != undefined && isSimilarText(choice[key], option.label);
+    });
+}
+
+function isSameQuestion(choice, state) {
+    return isSimilarText(choice.question, state.eventName) || isSimilarText(choice.question, state.eventDescription);
+}
+
+// 依 VOTING_CHOICES 找出要投的選項；讀不到遊戲選項文字時，以設定的文字顯示
+// 先比對選項文字（題目標題可能是各題共用的「要如何採取行動？」），都沒有命中才比對題目
+function findVotingOption(state) {
+    let choices = VOTING_CHOICES[state.epicId] || [];
+    let choice = choices.find((c) => isSameOptions(c, state)) || choices.find((c) => isSameQuestion(c, state));
+    if (choice == undefined) {
+        return { reason: "這一題不在 VOTING_CHOICES 中" };
+    }
+    if (!choice.answer) {
+        return { reason: `尚未設定要投的路線（A. ${choice.a}／B. ${choice.b}）` };
+    }
+    if (!VOTING_KEYS.includes(choice.answer)) {
+        return { reason: `answer 只能是 "a" 或 "b"（目前是「${choice.answer}」）` };
+    }
+    let option = state.options.find((o) => o.key == choice.answer);
+    return { option: option || { key: choice.answer, label: choice[choice.answer] } };
+}
+
+function votingLines(state) {
+    let options = state.options.length > 0 ? state.options.map((o) => `${o.label} ${o.votes} 票`).join("｜") : "讀不到選項（label_a/b/c 都是空的）";
+    return [`❓ ${state.eventName}｜${state.eventDescription}`, `選項：${options}`, `傳說 id ${state.epicId}｜event id ${state.eventId}`];
+}
+
+// 選擇題：依 VOTING_CHOICES 投票，每題只投一次；由全隊過半數或時間到決定路線，之後才進入能量階段
+// 回傳 { summary }（不需再處理）或 { result }（已送出投票）
+async function handleVoting(context, state, settings, isDryRun) {
+    let subtitle = `${state.eventName}｜選擇題`;
+    let lines = votingLines(state);
+    let voted = readMyVote(state);
+    if (voted) {
+        return { summary: { subtitle: subtitle, lines: [`🗳 已選「${voted}」，等待過半數或時間結束`].concat(lines) } };
+    }
+    let { option, reason } = findVotingOption(state);
+    if (option != undefined && !settings.isVoteEnabled) {
+        reason = `自動投票已關閉（設定為「${option.label}」）`;
+        option = undefined;
+    }
+    if (option == undefined) {
+        let isFirstNotice = !readVoteRecords()[`${state.fleetId}:${state.eventId}`];
+        if (!isDryRun && isFirstNotice) {
+            writeVoteRecord(state, { notified: true });
+        }
+        return { summary: { subtitle: subtitle, lines: [`⏸ ${reason}，不投票`].concat(lines), shouldNotify: isFirstNotice && !isDryRun } };
+    }
+    if (isDryRun) {
+        return { summary: { subtitle: `${subtitle}｜預覽`, lines: [`🔍 將選擇「${option.label}」`].concat(lines) } };
+    }
+    let label = `選擇「${option.label}」`;
+    try {
+        let response = await donate(context, state, eventBody(state, option, 1, 0));
+        if (response.success !== true) {
+            throw new Error(response.message || "success=false");
+        }
+        writeVoteRecord(state, { voted: option.label });
+        return { result: { isSuccess: true, line: `✅ ${label}`, isStepDone: response.refresh === true } };
+    } catch (error) {
+        // 同一題、同一個錯誤只通知一次，之後的 cron 仍會重試但只記 log
+        let record = readVoteRecords()[`${state.fleetId}:${state.eventId}`];
+        if (record && record.failed == error.message) {
+            return { summary: { subtitle: subtitle, lines: [`❌ ${label}：${error.message}（重複失敗，不再通知）`].concat(lines) } };
+        }
+        writeVoteRecord(state, { failed: error.message });
+        return { result: { isSuccess: false, line: `❌ ${label}：${error.message}` } };
+    }
 }
 
 async function contribute(context, settings, isDryRun) {
@@ -285,7 +453,19 @@ async function contribute(context, settings, isDryRun) {
         return { subtitle: "目前沒有參與中的傳說", lines: [] };
     }
     let results = [];
-    if (state.status == "event") {
+    if (state.status == "event" && state.eventType == "voting") {
+        let vote = await handleVoting(context, state, settings, isDryRun);
+        if (vote.summary) {
+            return vote.summary;
+        }
+        results.push(vote.result);
+        context.sentCount += 1;
+        // 投票成功後重新讀取，讓摘要顯示最新票數；refresh:true 時接著繳能量
+        if (vote.result.isSuccess) {
+            await sleep(REQUEST_INTERVAL_MS);
+            state = await fetchState(context);
+        }
+    } else if (state.status == "event") {
         let plans = planEventDonations(state, settings);
         if (isDryRun) {
             return previewResult(state, plans.map((p) => `${p.item.label} ${formatNumber(p.amount)}（${p.cost} 格）`), settings);
@@ -375,6 +555,9 @@ function buildSummary(state, results, settings) {
 }
 
 function resultLine(r) {
+    if (r.line) {
+        return r.line;
+    }
     return r.isSuccess ? `✅ ${r.label} ${formatNumber(r.amount)}（${r.cost} 格）` : `❌ ${r.label} ${formatNumber(r.amount)}：${r.error}`;
 }
 
@@ -407,6 +590,12 @@ async function testDonate(context) {
     };
 }
 
+// 原始回應：直接回傳 fleets/current 的 JSON（$httpClient 不帶 If-None-Match，一定是 200 完整內容），用來確認新的欄位
+async function fetchRaw(context) {
+    let data = await request("GET", `${API_BASE}/fleets/current?${context.query}`);
+    return { subtitle: "fleets/current 原始回應", lines: [], raw: JSON.stringify(data, null, 2) };
+}
+
 // 管理介面的請求需帶 X-Walkr-Admin header，避免其他網站用 GET 觸發繳納（CSRF）
 function hasAdminHeader(headers) {
     return Object.keys(headers || {}).some((key) => key.toLowerCase() == "x-walkr-admin" && headers[key] == "1");
@@ -417,7 +606,7 @@ function readRoute() {
         if (!hasAdminHeader($request.headers)) {
             return "forbidden";
         }
-        let match = $request.url.match(/\/api\/epic\/(run|status|test)/);
+        let match = $request.url.match(/\/api\/epic\/(run|status|test|raw)/);
         return match ? match[1] : "unknown";
     }
     return typeof $argument == "string" && $argument ? $argument : "cron";
@@ -444,6 +633,9 @@ async function runRoute(route) {
     if (route == "test") {
         return testDonate(context);
     }
+    if (route == "raw") {
+        return fetchRaw(context);
+    }
     if (route == "run" || route == "cron" || route == "status") {
         return contribute(context, settings, route == "status");
     }
@@ -452,11 +644,14 @@ async function runRoute(route) {
 
 function finish(route, summary, isError) {
     let record = { time: Date.now(), route: route, isError: isError, subtitle: summary.subtitle, lines: summary.lines };
-    if (route != "status" && !summary.isSkipped) {
+    if (summary.raw != undefined) {
+        record.raw = summary.raw;
+    }
+    if (!READ_ONLY_ROUTES.includes(route) && !summary.isSkipped) {
         $persistentStore.write(JSON.stringify(record), LAST_RESULT_KEY);
     }
     // cron 沒有繳納時只記 log，避免每 10 分鐘通知一次
-    if (isError || summary.hasDonation || (route != "cron" && route != "status")) {
+    if (isError || summary.hasDonation || summary.shouldNotify || (route != "cron" && !READ_ONLY_ROUTES.includes(route))) {
         notify(summary.subtitle, summary.lines.join("\n"));
     } else {
         console.log(`🚀 ${summary.subtitle}\n${summary.lines.join("\n")}`);

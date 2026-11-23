@@ -1,7 +1,7 @@
 // Walkr Config Page - Walkr 管理介面（分頁：傳說、共駕步數、帳號資源、實驗室、系統）
 // 攔截 walkr.mysurge.com 首頁，回傳 HTML；頁面透過同網域 API 操作：
 //   /api/read、/api/write、/api/reset、/api/status → walkr-config-api.js（白名單參數）
-//   /api/epic/status、/api/epic/run、/api/epic/test → walkr-epic-auto-contribute.js
+//   /api/epic/status、/api/epic/run、/api/epic/test、/api/epic/raw → walkr-epic-auto-contribute.js
 // 一般設定以 FORMS 描述欄位，由 renderForm 產生；網址 hash（#epic 等）記住目前分頁
 
 const html = `<!DOCTYPE html>
@@ -72,6 +72,11 @@ button:disabled { opacity: 0.5; }
 /* 每行一個區塊，換行時第二行起縮排對齊；只有超長字串（例如測試回應 JSON）才強制斷開 */
 .result .line { padding-left: 1.6em; text-indent: -1.6em; word-break: normal; overflow-wrap: anywhere; }
 .result.error { color: #f07272; }
+.result textarea {
+    display: block; width: 100%; height: 320px; margin: 8px 0; padding: 10px; border-radius: 8px; resize: vertical;
+    border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(0, 0, 0, 0.3); color: #e0e0e0;
+    font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre;
+}
 .result .title { font-weight: 600; color: #fff; }
 .result .time { color: #8aa; font-size: 12px; }
 .info { font-size: 13px; line-height: 1.7; }
@@ -97,11 +102,12 @@ button:disabled { opacity: 0.5; }
     <section class="tab" id="tab-epic">
         <div class="card">
             <div class="card-title">繳納狀態</div>
-            <div class="hint">「預覽」只讀取目前狀態與預計繳納內容；「立即繳納」依下方模式實際送出，不受自動執行開關限制。</div>
+            <div class="hint">「預覽」只讀取目前狀態與預計繳納內容；「立即繳納」依下方模式實際送出，不受自動執行開關限制；「原始回應」顯示 fleets/current 的完整 JSON，可複製給開發者確認新欄位（例如選擇題）。</div>
             <div class="row">
                 <button class="secondary" id="btnStatus" onclick="callEpic('status', this)">預覽</button>
                 <button id="btnRun" onclick="callEpic('run', this)">立即繳納</button>
             </div>
+            <button class="secondary" style="margin-top:10px" onclick="callEpic('raw', this)">原始回應</button>
             <div class="result" id="epicResult"></div>
         </div>
         <div id="form-epicSettings"></div>
@@ -178,6 +184,8 @@ var FORMS = {
         title: "自動繳納設定",
         fields: [
             { key: "WalkrEpicAutoEnabled", label: "自動執行（cron 每 10 分鐘）", type: "toggle", defaultOn: true },
+            { key: "WalkrEpicVoteEnabled", label: "選擇題自動投票", type: "toggle", defaultOn: true,
+              hint: "依腳本內 VOTING_CHOICES 投票；關閉時只通知一次題目與選項，不投票。" },
             { key: "WalkrEpicMode", label: "模式", type: "select", options: [["standard", "標準（依耐力規則）"], ["unlimited", "無限（0 格一次繳滿）"]], defaultValue: "standard",
               hint: "標準：第一段每項用 3 格繳需求量的 1/2，能量用 2+1 格繳 1/4 + 1/8。無限：需先用單次測試確認伺服器接受。" },
             { key: "WalkrEpicSharePercent", label: "第一段個人上限（每項需求量的 %）", type: "number", min: 1, max: 100, integer: true, defaultValue: "100",
@@ -283,7 +291,16 @@ function showRecord(el, record) {
     el.className = "result" + (record.isError ? " error" : "");
     el.innerHTML = '<div class="time">' + escapeHtml(record.time ? formatTime(record.time) : "") + "</div>" +
         '<div class="title">' + escapeHtml(record.subtitle) + "</div>" +
-        (record.lines || []).map(function(line) { return '<div class="line">' + escapeHtml(line) + "</div>"; }).join("");
+        (record.lines || []).map(function(line) { return '<div class="line">' + escapeHtml(line) + "</div>"; }).join("") +
+        (record.raw ? '<textarea readonly>' + escapeHtml(record.raw) + '</textarea><button class="secondary" onclick="copyRaw(this)">複製</button>' : "");
+}
+
+function copyRaw(btn) {
+    var textarea = btn.previousElementSibling;
+    textarea.select();
+    var copied = navigator.clipboard ? navigator.clipboard.writeText(textarea.value) : Promise.reject(new Error("不支援"));
+    copied.then(function() { btn.textContent = "已複製"; })
+        .catch(function() { btn.textContent = "請長按文字框手動複製"; });
 }
 
 function showMessage(el, text, isError) {

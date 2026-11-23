@@ -62,7 +62,7 @@
 
 | 分頁 | 內容與參數 |
 |---|---|
-| 🚀 傳說 | 繳納狀態（預覽、立即繳納）、自動繳納設定、單次測試；傳說獎勵 `WalkrEpicRewardType/Money/Cubes` |
+| 🚀 傳說 | 繳納狀態（預覽、立即繳納、原始回應）、自動繳納設定（含選擇題自動投票開關）、單次測試；傳說獎勵 `WalkrEpicRewardType/Money/Cubes` |
 | 👟 共駕步數 | `WalkrCovertBaseEnergy`、`WalkrEnergyPerStep`（顯示預估額外步數）；今日步數狀態（唯讀）；艦橋 `WalkrBridgeDisplayEnergy`（畫面顯示值，預設 160000）、`WalkrBridgeClaimEnergy`（實際領取值，預設 80000） |
 | 💰 帳號資源 | `WalkrIsExecuteMoneyModify`、`WalkrMoney`、`WalkrIsExecuteCubeModify`、`WalkrCube`；危險區塊，開啟和儲存前都會確認 |
 | 🧪 實驗室 | `WalkrLabAutoEnabled`（預設開啟）；顯示玩家 id、已處理輪次，可以清除 `WalkrDonateHandledRounds` |
@@ -103,16 +103,33 @@
    - `fleet.energy` 不夠燒完剩餘需求時，顯示還能飛多久、還差多少能量。
    - event 狀態則顯示下一段需要飛行的時數。
 
+### 選擇題（voting，2026-11-24 新增，尚未實測）
+
+- 所有傳說的流程（16 個，含選擇題與 A／B 路線的資源比較）整理在 `docs/walkr-epic-routes.md`，來源是使用者提供的簡體截圖 `har-test/epic/傳說任務流程截圖/`，已轉成繁體中文。截圖文字可能與遊戲略有不同（例如截圖「攻打／救他」，遊戲「攻打他／救救他」）。
+- `VOTING_CHOICES[傳說 id]` 每題為 `{ question, a, b, answer }`。**先**用 a、b 分別比對 `label_a`／`label_b`，都沒有命中才用題目比對 `event.name`／`event.description`（遊戲的大標題「要如何採取行動？」可能是各題共用的）。比對時忽略空白、標點與符號，其中一方包含另一方即可。
+- `answer` 是 `"a"`／`"b"`，送出 `value_x:1`、`hitpoints:0`。11 題都已由使用者填好預設路線；留空的題目不會投票，只通知一次。
+- `WalkrEpicVoteEnabled`（管理介面「選擇題自動投票」）關閉時不投票，只通知一次題目與選項；使用者會先關閉，抓到選擇題的資料後再開啟。
+- 投票失敗時記錄 `{ failed: 訊息 }`，cron 仍會重試，但同一個錯誤只通知一次。預覽（status）不會發通知。
+- 不管投票結果走哪條路線，之後的事件仍依 `fleets/current` 偵測需求繳納，不受影響。
+- 每題只投一次，紀錄在 `WalkrEpicVotedEvents`（key `fleetId:eventId`，最多 50 筆）；`hitpoints.value_*` 大於 0 也視為已在 app 手動投過（推測，尚未確認）。
+- 投票後回應 `refresh:true`（立即決定）會接著繳能量；否則等過半數或時間到，下一次 cron 進入 `path` 再繳能量。
+- **待確認**：選擇題當下 `fleets/current` 的 200 回應（選項是否在 `label_*`、票數、自己投票的欄位）。取得方式：
+  - 管理介面「原始回應」按鈕（`/api/epic/raw`）：直接顯示完整 JSON，可複製。投票前、投票後各取一次比對。
+  - HAR：模組的「共駕與傳說資料不使用快取」已把 `fleets/current` 加進 `walkr-bridge-no-cache.js`，app 的請求不再帶 `If-None-Match`，HAR 會是 200（要**開著模組**抓）。
+  - 確認後要回頭檢查 `readMyVote` 用 `hitpoints.value_* > 0` 判斷已投票是否正確（code review 留下的待辦）。
+
 ### 參數
 
 | key | 說明 | 預設 |
 |---|---|---|
 | `WalkrEpicAutoEnabled` | cron 是否執行 | true |
+| `WalkrEpicVoteEnabled` | 選擇題是否自動投票 | true |
 | `WalkrEpicMode` | `standard` / `unlimited` | standard |
 | `WalkrEpicSharePercent` | 第一段每項自己最多繳需求量的 %（讓隊友有機會貢獻），能量不受限制 | 100 |
 | `WalkrEpicTestItem` | 測試項目 a/b/c/energy，空白自動 | 空白 |
 | `WalkrEpicTestAmount` | 測試數量，空白為剩餘量 | 空白 |
 | `WalkrEpicTestHitpoints` | 測試請求的格數 | 1 |
+| `WalkrEpicVotedEvents` | 選擇題已投票／已通知的紀錄（腳本自動寫入） | 空白 |
 
 ### 使用者手機測試清單（2026-11-24 起，使用者測試中）
 
