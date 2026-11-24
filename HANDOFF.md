@@ -58,7 +58,7 @@
 
 ## 管理介面（2026-11-24，取代 Settings 腳本）
 
-`https://walkr.mysurge.com/`，用頂部 tab 切換分頁，網址 hash（`#epic`、`#pilot`、`#account`、`#lab`、`#system`）會記住目前分頁。`scripts/walkr-settings.js` 已移到 `scripts/deprecated/`，也從模組移除。手機上原本用 Settings 寫入的值仍然留在 persistentStore，介面會直接讀出來。
+`https://walkr.mysurge.com/`，用頂部 tab 切換分頁，網址 hash（`#epic`、`#pilot`、`#account`、`#lab`、`#info`、`#system`）會記住目前分頁。進入頁面時會自動預覽一次傳說狀態，不再顯示 `WalkrEpicLastResult` 暫存。`scripts/walkr-settings.js` 已移到 `scripts/deprecated/`，也從模組移除。手機上原本用 Settings 寫入的值仍然留在 persistentStore，介面會直接讀出來。
 
 | 分頁 | 內容與參數 |
 |---|---|
@@ -66,6 +66,7 @@
 | 👟 共駕步數 | `WalkrCovertBaseEnergy`、`WalkrEnergyPerStep`（顯示預估額外步數）；今日步數狀態（唯讀）；艦橋 `WalkrBridgeDisplayEnergy`（畫面顯示值，預設 160000）、`WalkrBridgeClaimEnergy`（實際領取值，預設 80000） |
 | 💰 帳號資源 | `WalkrIsExecuteMoneyModify`、`WalkrMoney`、`WalkrIsExecuteCubeModify`、`WalkrCube`；危險區塊，開啟和儲存前都會確認 |
 | 🧪 實驗室 | `WalkrLabAutoEnabled`（預設開啟）；顯示玩家 id、已處理輪次，可以清除 `WalkrDonateHandledRounds` |
+| 📖 資訊 | 所有傳說的事件、需求資源、飛行能量／時間（唯讀）。資料在 `scripts/walkr-epic-info.js`（模組規則「管理介面傳說資訊」，`/data/epics`），`null` 為遺漏、頁面以紅色標示；能量與時數不符每小時 6,000 也會標紅。實測後直接改這支腳本補資料 |
 | ⚙️ 系統 | token 是否擷取、到期時間（從 JWT 的 `exp` 解出）、帳號 id、App 版本、UA、網址擷取狀態 |
 
 - 傳說「預覽」的回應除了 `lines`（純文字），還有 `view`（`progress`、`hitpoints`、`actionLines`、`flightLines`）。標題為「關卡名稱｜階段」（繳納資源／飛行中；選擇題為「題目｜選擇題」）。頁面有 `view` 時依序畫出進度條、「耐力」膠囊格與下一格回復時間（`hitpoints.recovery`，用伺服器的 `next_hitpoint_at` 顯示時:分:秒；星球資源與選擇題不耗耐力，`hitpoints` 為 null 不畫）、預計繳納、分隔線、飛行資訊。選擇題的標題用 `VOTING_CHOICES` 比對到的題目（例如「兩條線索｜選擇題」），進度條是各選項票數對決定票數；沒有時（立即繳納、cron 結果）照舊逐行顯示。
@@ -88,6 +89,7 @@
   - `argument=test`：依 `WalkrEpicTestItem/Amount/Hitpoints` 送出單次繳納，顯示伺服器原始回應
   - http-request `walkr.mysurge.com/api/epic/{run|status|test}`：給管理介面呼叫，`status` 只預覽不繳納
 - `scripts/walkr-config-page.js`、`scripts/walkr-config-api.js`：管理介面，詳見下方「管理介面」章節
+- `scripts/walkr-epic-info.js`：管理介面「資訊」分頁的傳說靜態資料（`/data/epics`，唯讀、不打遊戲伺服器），數值來自 `docs/walkr-epic-routes.md` 與 `docs/walkr-epic-events.md`
 - 「立即繳納」和 cron 的繳納方式相同，差別只在不受 `WalkrEpicAutoEnabled` 開關限制。
 - `fleets/current` 的 query 直接沿用 `WalkrLabCurrentUrl` 的裝置參數（實測兩者相同），不需修改 capture 腳本
 
@@ -144,6 +146,7 @@
 3. 用「單次測試繳納」測：currency、virtual、能量各送 0 格或 1 格，再配上很大的數量，看伺服器接不接受、會不會截到剩餘量。
 4. 實際抵達時間跟預覽的預估做比較。
 5. 測試結果回填 `docs/walkr-epic-events.md`。
+6. 更新模組後開「資訊」分頁，確認讀得到 17 個傳說（需要新規則「管理介面傳說資訊」）；首頁打開時應自動出現一次預覽結果。
 
 ### 使用者提供各階段資料時，要拿到的東西
 

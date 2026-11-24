@@ -37,6 +37,8 @@
 
 [Walkr]管理介面傳說操作 = type=http-request,pattern=^https?:\/\/walkr\.mysurge\.com\/api\/epic\/,timeout=60,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-epic-auto-contribute.js
 
+[Walkr]管理介面傳說資訊 = type=http-request,pattern=^https?:\/\/walkr\.mysurge\.com\/data\/epics,timeout=10,script-path=https://raw.githubusercontent.com/greyson89/Surge/master/scripts/walkr-epic-info.js
+
 
 [MITM]
 hostname = %APPEND% *.fourdesireplay.io, *.fourdesire.com, *.fourdesireplay.com, *.fourdesire.io, walkr.mysurge.com

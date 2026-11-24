@@ -1,7 +1,8 @@
-// Walkr Config Page - Walkr 管理介面（分頁：傳說、共駕步數、帳號資源、實驗室、系統）
+// Walkr Config Page - Walkr 管理介面（分頁：傳說、共駕步數、帳號資源、實驗室、資訊、系統）
 // 攔截 walkr.mysurge.com 首頁，回傳 HTML；頁面透過同網域 API 操作：
 //   /api/read、/api/write、/api/reset、/api/status → walkr-config-api.js（白名單參數）
 //   /api/epic/status、/api/epic/run、/api/epic/test、/api/epic/raw → walkr-epic-auto-contribute.js
+//   /data/epics → walkr-epic-info.js（資訊分頁的傳說資料）
 // 一般設定以 FORMS 描述欄位，由 renderForm 產生；網址 hash（#epic 等）記住目前分頁
 
 const html = `<!DOCTYPE html>
@@ -96,6 +97,21 @@ button:disabled { opacity: 0.5; }
 .info-row .value { text-align: right; overflow-wrap: anywhere; }
 .info-row .value.ok { color: #6ee7d8; }
 .info-row .value.bad { color: #f07272; }
+.missing { color: #f07272; font-weight: 600; }
+details.epic { border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+details.epic:last-child { border-bottom: none; }
+details.epic summary { padding: 12px 0; font-size: 14px; font-weight: 600; cursor: pointer; }
+details.epic summary .sub { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: #8aa; }
+.epic-meta { font-size: 12px; color: #aaa; line-height: 1.7; margin-bottom: 8px; }
+.event { padding: 8px 0; border-top: 1px solid rgba(255, 255, 255, 0.06); font-size: 13px; line-height: 1.6; }
+.event .event-name { font-weight: 600; color: #fff; }
+.event .need { color: #ccc; }
+.event .flight { color: #8aa; font-size: 12px; }
+.event .note { color: #8aa; font-size: 12px; }
+.event .game { color: #6ee7d8; font-size: 12px; }
+.event.vote { background: rgba(110, 231, 216, 0.08); border-radius: 8px; padding: 8px; margin: 4px 0; }
+.route { display: inline-block; min-width: 18px; margin-right: 6px; padding: 0 5px; border-radius: 5px; font-size: 11px; text-align: center; background: rgba(246, 169, 107, 0.25); color: #f6a96b; }
+.route.b { background: rgba(140, 170, 255, 0.25); color: #9db4ff; }
 </style>
 </head>
 <body>
@@ -106,6 +122,7 @@ button:disabled { opacity: 0.5; }
         <button data-tab="pilot"><span class="icon">👟</span>共駕步數</button>
         <button data-tab="account"><span class="icon">💰</span>帳號資源</button>
         <button data-tab="lab"><span class="icon">🧪</span>實驗室</button>
+        <button data-tab="info"><span class="icon">📖</span>資訊</button>
         <button data-tab="system"><span class="icon">⚙️</span>系統</button>
     </nav>
 
@@ -174,6 +191,14 @@ button:disabled { opacity: 0.5; }
         </div>
     </section>
 
+    <section class="tab" id="tab-info">
+        <div class="card">
+            <div class="card-title">傳說資訊</div>
+            <div class="hint">各傳說的事件順序、需求資源與飛行能量／時間。數值多數整理自截圖，繳納以遊戲內 fleets/current 為準；<span class="missing">紅色</span>是遺漏或有疑問、等實測補齊的資料，標示「✓ 遊戲內確認」的是已用遊戲資料核對過的事件。A／B 是選擇題的分支路線。</div>
+            <div id="epicInfo">讀取中…</div>
+        </div>
+    </section>
+
     <section class="tab" id="tab-system">
         <div class="card">
             <div class="card-title">擷取狀態</div>
@@ -186,7 +211,7 @@ button:disabled { opacity: 0.5; }
 
 <script>
 var API_BASE = "/api";
-var TABS = ["epic", "pilot", "account", "lab", "system"];
+var TABS = ["epic", "pilot", "account", "lab", "info", "system"];
 
 // 一般設定表單：toggle 點擊後立即寫入，其餘欄位按「儲存」一起寫入
 var FORMS = {
@@ -367,6 +392,7 @@ function showTab(name) {
         btn.classList.toggle("active", btn.getAttribute("data-tab") === tab);
     });
     if (tab === "pilot" || tab === "lab" || tab === "system") { loadStatus(); }
+    if (tab === "info") { loadEpicInfo(); }
 }
 
 document.getElementById("tabs").addEventListener("click", function(event) {
@@ -489,15 +515,78 @@ function loadEpic() {
     readKey("WalkrEpicTestItem").then(function(v) { document.getElementById("testItem").value = v || ""; });
     readKey("WalkrEpicTestAmount").then(function(v) { document.getElementById("testAmount").value = v || ""; });
     readKey("WalkrEpicTestHitpoints").then(function(v) { document.getElementById("testHitpoints").value = v === "" ? "1" : v; });
-    readKey("WalkrEpicLastResult").then(function(v) {
-        if (!v) { return; }
-        var el = document.getElementById("epicResult");
-        try {
-            showRecord(el, JSON.parse(v));
-        } catch (err) {
-            showMessage(el, "❌ 上次結果無法解析", true);
-        }
-    });
+    // 進入畫面時自動預覽一次目前狀態（不顯示上次的暫存結果）
+    callEpic("status", document.getElementById("btnStatus"));
+}
+
+// ===== 資訊（傳說資料） =====
+// 資料來自 walkr-epic-info.js：0 = 不需要、null = 遺漏
+var ENERGY_PER_HOUR = 6000;
+var isEpicInfoLoaded = false;
+
+function missingHtml(text) {
+    return '<span class="missing">' + escapeHtml(text) + "</span>";
+}
+
+function amountHtml(label, value) {
+    if (value === null) { return escapeHtml(label) + " " + missingHtml("遺漏"); }
+    return value > 0 ? escapeHtml(label + " " + formatNumber(value)) : "";
+}
+
+function needHtml(ev) {
+    var parts = [
+        ev.item ? escapeHtml(ev.item) : "",
+        amountHtml("金幣", ev.coins), amountHtml("食物", ev.food),
+        amountHtml("資源 A", ev.a), amountHtml("資源 B", ev.b), amountHtml("資源 C", ev.c)
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join("・") : missingHtml("需求資源遺漏");
+}
+
+function flightHtml(ev) {
+    var energy = ev.energy === null ? missingHtml("遺漏") : formatNumber(ev.energy);
+    var hours = ev.hours === null ? missingHtml("遺漏") : escapeHtml(ev.hours + " 小時");
+    var isMismatch = ev.energy !== null && ev.hours !== null && ev.energy !== ev.hours * ENERGY_PER_HOUR;
+    return '<div class="flight">→ 飛行能量 ' + energy + "・" + hours +
+        (isMismatch ? " " + missingHtml("（與每小時 6,000 能量不符）") : "") + "</div>";
+}
+
+function eventHtml(ev) {
+    var extra = (ev.game ? '<div class="game">✓ 遊戲內確認：' + escapeHtml(ev.game) + "</div>" : "") +
+        (ev.note ? '<div class="note">' + escapeHtml(ev.note) + "</div>" : "");
+    if (ev.vote) {
+        return '<div class="event vote"><div class="event-name">❓ ' + escapeHtml(ev.vote) + '</div><div class="need">' +
+            '<span class="route">A</span>' + escapeHtml(ev.optionA) + '　<span class="route b">B</span>' + escapeHtml(ev.optionB) +
+            "</div>" + flightHtml(ev) + extra + "</div>";
+    }
+    var route = ev.name.match(/^([AB])\.(.*)$/);
+    var name = route ? '<span class="route' + (route[1] === "B" ? " b" : "") + '">' + route[1] + "</span>" + escapeHtml(route[2]) : escapeHtml(ev.name);
+    return '<div class="event"><div class="event-name">' + name + '</div><div class="need">' + needHtml(ev) + "</div>" + flightHtml(ev) + extra + "</div>";
+}
+
+function epicInfoHtml(epic) {
+    var totalEnergy = epic.events.reduce(function(sum, ev) { return sum + (ev.energy || 0); }, 0);
+    var participate = epic.participate ? escapeHtml(epic.participate) : epic.cubes === null ? "能量方塊 " + missingHtml("遺漏") : escapeHtml("能量方塊 " + formatNumber(epic.cubes));
+    var finish = epic.finish === null ? missingHtml("遺漏") : escapeHtml(epic.finish);
+    var votes = epic.events.filter(function(ev) { return ev.vote; }).length;
+    return '<details class="epic"><summary>' + escapeHtml(epic.id + ". " + epic.name) +
+        '<span class="sub">' + escapeHtml(epic.members + " 人・" + epic.events.length + " 個事件" + (votes > 0 ? "・" + votes + " 題選擇題" : "")) + "</span></summary>" +
+        '<div class="epic-meta">完成：' + finish + "<br>獎勵：" + escapeHtml(formatNumber(epic.contribution) + " × 貢獻度 金幣") + "＋" + participate +
+        "<br>" + escapeHtml("journey " + epic.journey + "・列出的飛行能量合計 " + formatNumber(totalEnergy) + "（含所有分支）") +
+        (epic.note ? '<br><span class="missing">' + escapeHtml(epic.note) + "</span>" : "") + "</div>" +
+        epic.events.map(eventHtml).join("") + "</details>";
+}
+
+function loadEpicInfo() {
+    if (isEpicInfoLoaded) { return; }
+    var el = document.getElementById("epicInfo");
+    fetch("/data/epics", { headers: ADMIN_HEADERS })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            isEpicInfoLoaded = true;
+            el.innerHTML = data.epics.map(epicInfoHtml).join("") +
+                '<div class="hint" style="margin:12px 0 0">資料更新：' + escapeHtml(data.updatedAt) + "</div>";
+        })
+        .catch(function(err) { el.textContent = "❌ " + err; });
 }
 
 // ===== 狀態（共駕步數、實驗室、系統） =====
