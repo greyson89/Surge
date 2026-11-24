@@ -34,6 +34,7 @@
 
 ## 耐力（hitpoints）
 
+- `next_hitpoint_at` 是下一格回復的伺服器時間（epoch 秒），等於讀取時間（`last_consumed_at`）加上 `next_hitpoint_countdown`；耐力滿時分別是 0 和 null（2026-11-23 HAR 確認）。
 - 最多 3 格，每用掉一格後每 60 秒回復一格（`next_hitpoint_at`、`next_hitpoint_countdown`）。
 - 步驟切換時（資源 → 能量）會重置成 3 格。
 - `resources` 類型送 `hitpoints:0`，伺服器照樣接受。剩餘格數雖然會被扣到負數，但不會擋。
@@ -51,6 +52,18 @@
 | `travelling` | 第二段能量（只出現在請求中） | `energy` | 1/4 需求量用 2 格，1/8 需求量用 1 格 |
 
 `virtual-*` 繳的是星球收取的資源（使用者說明：食物會轉成星球生產的資源，資源再換成 coins），但和 `resources` 不同，會消耗耐力。`resource_b`（4000、400）的意義尚未確認，只繳 `value_a` 就會完成，繳納時不需要用到。
+
+### 單次測試結果（無限模式是否可行）
+
+| 時間 | 類型 | 送出 | 當時耐力 | 回應 | 結論 |
+|---|---|---|---|---|---|
+| 2026-11-24 15:02 | currency（event 121） | 金幣 400,000（剩餘量）、`hitpoints:0` | 2 格 | `{"success":false,"refresh":false,"message":"Unknown"}` | 伺服器拒絕 |
+| 2026-11-24 | currency（event 121） | 金幣 1,000、`hitpoints:0` | — | 失敗 | 伺服器拒絕 |
+| 2026-11-24 | currency（event 121） | 金幣 400,000、`hitpoints:1` | — | 失敗 | 伺服器拒絕（不會截成 1 格允許的量） |
+
+- 結論：伺服器會檢查格數和數量，0 格（即使數量很小）或數量超過格數允許的量，都會整筆拒絕，不會自動截斷。currency 只能照 app 的選項繳，無限模式在 currency 不可行。
+- 同一關由腳本 cron 用 3 格繳金幣 400,000 成功（使用者確認），這是第一次在手機上確認自動繳納有效。
+- virtual-* 和能量沒有實測，使用者依遊戲經驗判斷一樣會被擋，2026-11-24 移除無限模式。
 
 ## 選擇題（voting）
 
@@ -100,8 +113,37 @@ app 的選項是 `required_energy` 乘以下列比例（截圖：需求量 36000
 | 116 | 國王派出史萊姆偵查兵 | resources | | 38,000 | 35,000 | 38,000 | 24,000 | 4 |
 | 117 | 偵查兵的補給部隊 | currency | | 800,000 | 100,000 | | 24,000 | 4 |
 | 118 | 購買放大鏡 | virtual-coins | 放大鏡 | 200 | 4,000 | | 30,000 | 5 |
+| 119 | 打噴嚏的巨龍王 | resources | | 40,000（完成值） | 20,000 | 30,000 | | |
+| 120 | 要如何採取行動？ | voting | 攻打他／救救他 | | | | 36,000 | 6 |
+| 121 | 進攻巨龍王（攻打路線第一關） | currency | | 800,000 | 100,000 | | 36,000 | 6 |
 
 114 只有 `fleet_histories` 的完成值，沒有拿到 `fleets/current`，所以缺少 path 資料。
+
+抵達分支第一關（2026-11-24 擷取，event 121）：
+
+- 投票選「攻打他」後抵達「進攻巨龍王」，名稱、類型與需求量（金幣 800,000、食物 100,000）都和 `docs/walkr-epic-routes.md` 的 `A.進攻巨龍王` 一致，確認遊戲內名稱沒有 `A.` 前綴。
+- 新的 `path`（id 106）`target_id` 是 123，跳過 122；推測 122 是「救救他」路線的第一關，123 是攻打路線的下一關「準備軍糧丸」（尚未確認）。
+- `fleet_histories` 新增 120（voting），`value_a/b` 是最後票數 5／1。
+- `fleet.started_at` 等於 `last_consumed_at`，是抵達的時間。
+- event 狀態下 `fleet.consumed_energy` 會保留**上一段** path 的燃燒量（這次 36,000，`energy` 0），進入 `path` 狀態時才歸零（舊的 HAR 也是如此，例如 118 在 event 時 `consumed` 24,000、`path.required_energy` 30,000）。腳本只在 `path` 狀態使用 `consumed_energy`，不受影響。
+- 用這筆回應模擬腳本：預覽與繳納都是「金幣 400,000（3 格）」，飛行顯示「第一段完成後需飛行 6 小時、需要 36,000 能量」，送出的 body 為 `event_type:"currency"`、`event_id:121`、`value_a:400000`、`hitpoints:3`。
+
+## 完成獎勵（`POST fleets/{id}/finish`）
+
+2026-11-21 HAR（巨龍王 fleet 10609920）的回應：
+
+```json
+{"success":true,"rate":0.2325,"fetchable_contents":[
+  {"id":208407207,"content_type":"goal:participate:12","key":"cubes","value":"400",...},
+  {"id":208407208,"content_type":"goal:contribution:12","key":"coins","value":"9300000.0:0.2325",...}]}
+```
+
+- 兩筆獎勵都對應 `GET /epics` 的欄位：
+  - `goal:participate:{epic}` 是參與獎勵，`key`／`value` 等於 `participate_type`／`participate_value`。只有 DFR 工廠之旅（14）是 `replicator`／`map`（設計圖），其他傳說都是 `cubes`／數量（巨龍王 400）。
+  - `goal:contribution:{epic}` 是貢獻獎勵：`contribution_value × rate`（40,000,000 × 0.2325 = 9,300,000），`value` 格式為 `金幣:比率`。
+- `rewards_type`／`rewards_value`（星球）沒有出現在 finish 回應裡。這個帳號的傳說都已 `solved`，推測星球只在第一次完成時給。
+- `walkr-change-epic-reward.js` 選設計圖時，會把參與獎勵那一筆改成 `key:"replicator"`、`value:"map"`，也就是 DFR 工廠之旅的參與獎勵格式。這是**取代**能量方塊，不是另外加一筆，所以領到的是「金幣 + 設計圖」，沒有能量方塊。
+- 還沒看過 DFR 工廠之旅實際的 finish 回應，也還沒確認改成設計圖後 app 是否真的入帳。
 
 ## 傳說列表（`GET /epics`）
 

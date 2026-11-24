@@ -10,7 +10,6 @@
 const WRITABLE_KEYS = [
     "WalkrEpicAutoEnabled",
     "WalkrEpicVoteEnabled",
-    "WalkrEpicMode",
     "WalkrEpicSharePercent",
     "WalkrEpicTestItem",
     "WalkrEpicTestAmount",

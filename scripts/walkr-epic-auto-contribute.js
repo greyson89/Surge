@@ -11,7 +11,6 @@
 // 參數（persistentStore，可由管理介面修改）：
 //   WalkrEpicAutoEnabled   true/false，cron 是否執行，預設 true
 //   WalkrEpicVoteEnabled   true/false，選擇題是否自動投票，預設 true；關閉時只通知一次題目與選項
-//   WalkrEpicMode          standard（依耐力規則）/unlimited（0 格、一次繳滿剩餘量），預設 standard
 //   WalkrEpicSharePercent  第一段每一項自己最多繳需求量的幾 %（1~100），預設 100；能量不受此限制
 //   WalkrEpicTestItem      a/b/c/energy，空白為自動選擇目前步驟第一個未完成項目
 //   WalkrEpicTestAmount    數量，空白為剩餘需求量
@@ -146,7 +145,6 @@ function readSettings() {
     return {
         isAutoEnabled: $persistentStore.read("WalkrEpicAutoEnabled") != "false",
         isVoteEnabled: $persistentStore.read("WalkrEpicVoteEnabled") != "false",
-        isUnlimited: $persistentStore.read("WalkrEpicMode") == "unlimited",
         sharePercent: percent >= 1 && percent <= 100 ? percent : 100,
     };
 }
@@ -199,6 +197,7 @@ function parseState(data) {
         status: data.event_status,
         hitpoints: Number(hitpoints.hitpoints) || 0,
         nextHitpointCountdown: hitpoints.next_hitpoint_countdown,
+        nextHitpointAt: Number(hitpoints.next_hitpoint_at) || 0,
         items: items,
         energy: {
             required: Number(path && path.required_energy) || 0,
@@ -216,10 +215,10 @@ function shareRemaining(item, sharePercent) {
     return Math.max(0, Math.min(fleetRemaining, myRemaining));
 }
 
-// 第一段：resources 不耗耐力，全部繳滿；其他類型標準模式每項用 3 格繳需求量的 1/2，無限模式 0 格繳滿
+// 第一段：resources 不耗耐力，全部繳滿；其他類型每項用 3 格繳需求量的 1/2（伺服器會檢查格數與數量，0 格或超量會整筆拒絕）
 function planEventDonations(state, settings) {
     let hitpoints = state.hitpoints;
-    let isFree = state.eventType == "resources" || settings.isUnlimited;
+    let isFree = state.eventType == "resources";
     let plans = [];
     for (let item of state.items) {
         let remaining = shareRemaining(item, settings.sharePercent);
@@ -240,14 +239,11 @@ function planEventDonations(state, settings) {
     return plans;
 }
 
-// 第二段：標準模式依 app 選項（1/4 用 2 格、1/8 用 1 格）用完剩餘耐力，無限模式 0 格一次繳滿
-function planEnergyDonations(state, settings) {
+// 第二段：依 app 選項（1/4 用 2 格、1/8 用 1 格）用完剩餘耐力
+function planEnergyDonations(state) {
     let remaining = state.energy.required - state.energy.donated;
     if (remaining <= 0) {
         return [];
-    }
-    if (settings.isUnlimited) {
-        return [{ amount: remaining, cost: 0 }];
     }
     let [largeTier, smallTier] = ENERGY_TIERS;
     let smallAmount = Math.floor(state.energy.required * smallTier.ratio);
@@ -309,7 +305,8 @@ async function sendPlans(context, state, plans, buildBody, label) {
     return results;
 }
 
-function describeWaiting(state, settings) {
+// withCountdown=false 給管理介面預覽用，回復時間改顯示在耐力格旁邊
+function describeWaiting(state, settings, withCountdown = true) {
     if (state.status != "event" && state.status != "path") {
         return `目前狀態：${state.status}`;
     }
@@ -320,7 +317,7 @@ function describeWaiting(state, settings) {
     if (isAllFilled) {
         return settings.sharePercent < 100 ? `已達個人上限 ${settings.sharePercent}%` : "資源已繳滿";
     }
-    let countdown = state.nextHitpointCountdown ? `，${state.nextHitpointCountdown} 秒後回復 1 格` : "";
+    let countdown = withCountdown && state.nextHitpointCountdown ? `，${state.nextHitpointCountdown} 秒後回復 1 格` : "";
     return `耐力不足，剩 ${state.hitpoints} 格${countdown}`;
 }
 
@@ -387,9 +384,13 @@ function isSameQuestion(choice, state) {
 
 // 依 VOTING_CHOICES 找出要投的選項；讀不到遊戲選項文字時，以設定的文字顯示
 // 先比對選項文字（題目標題可能是各題共用的「要如何採取行動？」），都沒有命中才比對題目
-function findVotingOption(state) {
+function findVotingChoice(state) {
     let choices = VOTING_CHOICES[state.epicId] || [];
-    let choice = choices.find((c) => isSameOptions(c, state)) || choices.find((c) => isSameQuestion(c, state));
+    return choices.find((c) => isSameOptions(c, state)) || choices.find((c) => isSameQuestion(c, state));
+}
+
+function findVotingOption(state) {
+    let choice = findVotingChoice(state);
     if (choice == undefined) {
         return { reason: "這一題不在 VOTING_CHOICES 中" };
     }
@@ -404,10 +405,13 @@ function findVotingOption(state) {
 }
 
 // 剩餘時間與決定票數（同一項達成員數一半，或時間到才決定路線；2026-11-24 巨龍王 10 人時 5 票就決定）
+function requiredVotes(state) {
+    return Math.ceil(state.membersCount / 2);
+}
+
 function votingStatusLine(state, nowMs) {
     let totalVotes = state.options.reduce((sum, o) => sum + o.votes, 0);
-    let requiredVotes = Math.ceil(state.membersCount / 2);
-    let votesText = `已投 ${totalVotes}/${state.membersCount} 人｜達一半需 ${requiredVotes} 票`;
+    let votesText = `已投 ${totalVotes}/${state.membersCount} 人｜達一半需 ${requiredVotes(state)} 票`;
     if (state.startedAt <= 0) {
         return [`⏳ ${votesText}`];
     }
@@ -423,14 +427,27 @@ function votingLines(state) {
         .concat(votingStatusLine(state, Date.now()), `傳說 id ${state.epicId}｜event id ${state.eventId}`);
 }
 
+// 選擇題摘要：標題用 VOTING_CHOICES 的題目（遊戲的 event.name 可能是各題共用的標題），比對不到才用 event.name
+// view 以進度條顯示各選項票數（目標為決定票數），不顯示耐力格（投票不耗耐力）
+function votingSummary(state, firstLine, extra = {}) {
+    let choice = findVotingChoice(state);
+    let mine = readMyVote(state);
+    let view = {
+        progress: state.options.map((o) => ({ label: o.label == mine ? `${o.label}（已投）` : o.label, current: o.votes, required: requiredVotes(state), unit: " 票" })),
+        hitpoints: null,
+        actionLines: [firstLine].concat(votingStatusLine(state, Date.now()), `傳說 id ${state.epicId}｜event id ${state.eventId}`),
+        flightLines: flightLines(state, Date.now()),
+    };
+    return { subtitle: `${choice ? choice.question : state.eventName}｜選擇題`, lines: [firstLine].concat(votingLines(state)), view: view, ...extra };
+}
+
 // 選擇題：依 VOTING_CHOICES 投票，每題只投一次；由全隊過半數或時間到決定路線，之後才進入能量階段
 // 回傳 { summary }（不需再處理）或 { result }（已送出投票）
 async function handleVoting(context, state, settings, isDryRun) {
-    let subtitle = `${state.eventName}｜選擇題`;
-    let lines = votingLines(state);
+    let summary = (firstLine, extra) => votingSummary(state, firstLine, extra);
     let voted = readMyVote(state);
     if (voted) {
-        return { summary: { subtitle: subtitle, lines: [`🗳 已選「${voted}」，等待票數達一半或時間結束`].concat(lines) } };
+        return { summary: summary(`🗳 已選「${voted}」，等待票數達一半或時間結束`) };
     }
     let { option, reason } = findVotingOption(state);
     if (option != undefined && !settings.isVoteEnabled) {
@@ -442,10 +459,10 @@ async function handleVoting(context, state, settings, isDryRun) {
         if (!isDryRun && isFirstNotice) {
             writeVoteRecord(state, { notified: true });
         }
-        return { summary: { subtitle: subtitle, lines: [`⏸ ${reason}，不投票`].concat(lines), shouldNotify: isFirstNotice && !isDryRun } };
+        return { summary: summary(`⏸ ${reason}，不投票`, { shouldNotify: isFirstNotice && !isDryRun }) };
     }
     if (isDryRun) {
-        return { summary: { subtitle: `${subtitle}｜預覽`, lines: [`🔍 將選擇「${option.label}」`].concat(lines) } };
+        return { summary: summary(`🔍 將選擇「${option.label}」`) };
     }
     let label = `選擇「${option.label}」`;
     try {
@@ -459,7 +476,7 @@ async function handleVoting(context, state, settings, isDryRun) {
         // 同一題、同一個錯誤只通知一次，之後的 cron 仍會重試但只記 log
         let record = readVoteRecords()[`${state.fleetId}:${state.eventId}`];
         if (record && record.failed == error.message) {
-            return { summary: { subtitle: subtitle, lines: [`❌ ${label}：${error.message}（重複失敗，不再通知）`].concat(lines) } };
+            return { summary: summary(`❌ ${label}：${error.message}（重複失敗，不再通知）`) };
         }
         writeVoteRecord(state, { failed: error.message });
         return { result: { isSuccess: false, line: `❌ ${label}：${error.message}` } };
@@ -496,7 +513,7 @@ async function contribute(context, settings, isDryRun) {
         }
     }
     if (state != null && state.status == "path") {
-        let plans = planEnergyDonations(state, settings);
+        let plans = planEnergyDonations(state);
         if (isDryRun) {
             return previewResult(state, plans.map((p) => `能量 ${formatNumber(p.amount)}（${p.cost} 格）`), settings);
         }
@@ -509,9 +526,42 @@ async function contribute(context, settings, isDryRun) {
     return buildSummary(state, results, settings);
 }
 
+// 預覽：lines 是純文字版；view 給管理介面畫進度條與耐力格（順序：進度 → 耐力與預計繳納 → 分隔線 → 飛行）
+// 標題為「關卡名稱｜目前階段」
 function previewResult(state, planLines, settings) {
-    let lines = planLines.length > 0 ? planLines.map((line) => `🔍 ${line}`) : [`⏸ ${describeWaiting(state, settings)}`];
-    return { subtitle: `${state.eventName}｜預覽`, lines: lines.concat(progressLine(state), flightLines(state, Date.now())) };
+    let planText = planLines.map((line) => `🔍 ${line}`);
+    let actionLines = planText.length > 0 ? planText : [`⏸ ${describeWaiting(state, settings)}`];
+    let flight = flightLines(state, Date.now());
+    let view = {
+        progress: progressItems(state),
+        // 星球資源不耗耐力，不顯示耐力格
+        hitpoints: state.status == "event" && state.eventType == "resources" ? null : { value: state.hitpoints, max: MAX_HITPOINTS, recovery: hitpointRecoveryText(state) },
+        actionLines: planText.length > 0 ? planText : [`⏸ ${describeWaiting(state, settings, false)}`],
+        flightLines: flight,
+    };
+    let stage = state.status == "path" ? "飛行中" : "繳納資源";
+    return { subtitle: `${state.eventName}｜${stage}`, lines: [progressLine(state)].concat(actionLines, flight), view: view };
+}
+
+// next_hitpoint_at 是伺服器給的下一格回復時間（epoch 秒，HAR 確認 = 讀取時間 + countdown）；耐力滿時為 0
+// 用伺服器時間，不受手機時鐘誤差影響；回復約每分鐘 1 格，所以顯示到秒
+function hitpointRecoveryText(state) {
+    if (state.hitpoints >= MAX_HITPOINTS) {
+        return "已滿";
+    }
+    if (state.nextHitpointAt <= 0) {
+        return "";
+    }
+    let date = new Date(state.nextHitpointAt * 1000);
+    let pad = (n) => String(n).padStart(2, "0");
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} 回復 1 格`;
+}
+
+function progressItems(state) {
+    if (state.status == "path") {
+        return [{ label: "能量", current: Math.min(state.energy.donated, state.energy.required), required: state.energy.required }];
+    }
+    return state.items.map((item) => ({ label: item.label, current: item.current, required: item.required }));
 }
 
 function formatDuration(seconds) {
@@ -665,6 +715,9 @@ function finish(route, summary, isError) {
     let record = { time: Date.now(), route: route, isError: isError, subtitle: summary.subtitle, lines: summary.lines };
     if (summary.raw != undefined) {
         record.raw = summary.raw;
+    }
+    if (summary.view != undefined) {
+        record.view = summary.view;
     }
     if (!READ_ONLY_ROUTES.includes(route) && !summary.isSkipped) {
         $persistentStore.write(JSON.stringify(record), LAST_RESULT_KEY);

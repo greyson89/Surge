@@ -68,6 +68,7 @@
 | 🧪 實驗室 | `WalkrLabAutoEnabled`（預設開啟）；顯示玩家 id、已處理輪次，可以清除 `WalkrDonateHandledRounds` |
 | ⚙️ 系統 | token 是否擷取、到期時間（從 JWT 的 `exp` 解出）、帳號 id、App 版本、UA、網址擷取狀態 |
 
+- 傳說「預覽」的回應除了 `lines`（純文字），還有 `view`（`progress`、`hitpoints`、`actionLines`、`flightLines`）。標題為「關卡名稱｜階段」（繳納資源／飛行中；選擇題為「題目｜選擇題」）。頁面有 `view` 時依序畫出進度條、「耐力」膠囊格與下一格回復時間（`hitpoints.recovery`，用伺服器的 `next_hitpoint_at` 顯示時:分:秒；星球資源與選擇題不耗耐力，`hitpoints` 為 null 不畫）、預計繳納、分隔線、飛行資訊。選擇題的標題用 `VOTING_CHOICES` 比對到的題目（例如「兩條線索｜選擇題」），進度條是各選項票數對決定票數；沒有時（立即繳納、cron 結果）照舊逐行顯示。
 - 頁面的一般設定由 `FORMS` 描述欄位，`renderForm` 產生表單。toggle 點擊後立即寫入，其他欄位按「儲存」才寫入，並會驗證是否必填、整數、範圍。
 - `walkr-config-api.js` 只允許白名單內的參數：`WRITABLE_KEYS` 可讀寫，`READONLY_KEYS` 只能讀，`RESETTABLE_KEYS` 只能清除。`/api/status` 回傳摘要，token 不會原樣回傳。新增參數時要同時改白名單。
 - 防 CSRF：頁面所有請求都帶 `X-Walkr-Admin: 1`。API 的 write、reset 與 epic 的 http-request 路線沒有這個 header 就拒絕（跨域送出自訂 header 會觸發 preflight 而被擋）。
@@ -87,15 +88,16 @@
   - `argument=test`：依 `WalkrEpicTestItem/Amount/Hitpoints` 送出單次繳納，顯示伺服器原始回應
   - http-request `walkr.mysurge.com/api/epic/{run|status|test}`：給管理介面呼叫，`status` 只預覽不繳納
 - `scripts/walkr-config-page.js`、`scripts/walkr-config-api.js`：管理介面，詳見下方「管理介面」章節
-- 「立即繳納」和 cron 一樣依 `WalkrEpicMode` 繳納，差別只在不受 `WalkrEpicAutoEnabled` 開關限制。
+- 「立即繳納」和 cron 的繳納方式相同，差別只在不受 `WalkrEpicAutoEnabled` 開關限制。
 - `fleets/current` 的 query 直接沿用 `WalkrLabCurrentUrl` 的裝置參數（實測兩者相同），不需修改 capture 腳本
 
 ### 繳納邏輯
 
 1. `GET fleets/current`；`event_status == "event"` 為第一段、`"path"` 為第二段。
-2. 第一段：`resources` 一律 0 格繳滿；其他類型標準模式每項用 3 格繳 `min(需求量 1/2, 剩餘量)`，無限模式 0 格繳滿。`virtual-*` 只算 `resource_a`。
+2. 第一段：`resources` 一律 0 格繳滿；其他類型每項用 3 格繳 `min(需求量 1/2, 剩餘量)`。`virtual-*` 只算 `resource_a`。
 3. 回應 `refresh:true`（步驟完成）時重新讀取，若進入 `path` 接著繳能量。
-4. 第二段：標準模式 2 格繳 1/4、1 格繳 1/8（剩餘量 ≤ 1/8 時只用 1 格）；無限模式 0 格繳滿。
+4. 第二段：2 格繳 1/4、1 格繳 1/8（剩餘量 ≤ 1/8 時只用 1 格）。
+- 無限模式（0 格一次繳滿）已在 2026-11-24 移除：伺服器會檢查格數與數量，不符合就整筆拒絕。手機上殘留的 `WalkrEpicMode` 不再被讀取。
 5. 每個請求間隔 2.5 秒；任一筆失敗就停止。結果存在 `WalkrEpicLastResult`，通知標題 `🚀 Walkr Epic`。
 6. 預覽會顯示飛行時間（`flightLines`，回傳多行，第二行起用全形空白縮排）：
    - `fleets/current` 回應中的 `last_consumed_at` 就是讀取的時間，代表伺服器在讀取當下已經結算好燃燒量，`consumed_energy` 是即時值。
@@ -117,7 +119,7 @@
 - **已確認（2026-11-24 HAR）**：選項在 `label_a/b`、票數在 `fleet.value_*`、自己投的選項在 `hitpoints.value_*`；截止時間推得是 `fleet.started_at + 24 小時`。詳見 `docs/walkr-epic-events.md` 的選擇題章節。
 - **還沒觀察到**（使用者之後提供，收到再處理）：
   1. ~~路線決定後、飛行中（`path`）的「原始回應」~~：已取得（2026-11-24），`target_id` 不變（121）、`fleet_histories` 用 `value_*` 記最後票數，`started_at` 是目前步驟的開始時間；5/10 票就決定，預覽的決定票數已改成 `ceil(n/2)`（只有一筆樣本）。腳本在這個狀態只繳能量，判斷正確。詳見 `docs/walkr-epic-events.md`。
-  2. 抵達分支第一關後的「原始回應」：確認分支事件的 `event_type`、名稱與需求量，核對 `docs/walkr-epic-routes.md`。截圖的 `A.`／`B.` 前綴是整理者加的分類，遊戲內名稱沒有，比對時要拿掉。
+  2. ~~抵達分支第一關後的「原始回應」~~：已取得（2026-11-24），event 121「進攻巨龍王」currency 800,000／100,000，與 routes 文件 `A.進攻巨龍王` 一致，遊戲內名稱沒有 `A.` 前綴；腳本模擬繳金幣 400,000（3 格），不需修改。event 狀態的 `consumed_energy` 是上一段殘留值，進入 path 才歸零。詳見 `docs/walkr-epic-events.md`。
   3. 由腳本實際投出第一票（巨龍王下一題「兩條線索」，使用者會打開自動投票），確認伺服器接受、通知內容正確。
   4. 再核對一次截止時間是否為 `started_at + 24 小時`（目前只有一筆樣本）。
   5. 尚未看過投票前的回應，推測 `hitpoints.value_*` 全是 0（腳本依此判斷尚未投票）。
@@ -129,7 +131,6 @@
 |---|---|---|
 | `WalkrEpicAutoEnabled` | cron 是否執行 | true |
 | `WalkrEpicVoteEnabled` | 選擇題是否自動投票 | true |
-| `WalkrEpicMode` | `standard` / `unlimited` | standard |
 | `WalkrEpicSharePercent` | 第一段每項自己最多繳需求量的 %（讓隊友有機會貢獻），能量不受限制 | 100 |
 | `WalkrEpicTestItem` | 測試項目 a/b/c/energy，空白自動 | 空白 |
 | `WalkrEpicTestAmount` | 測試數量，空白為剩餘量 | 空白 |
@@ -142,7 +143,7 @@
 2. 開 `https://walkr.mysurge.com/` 按「預覽」，確認讀得到階段和飛行時間；在系統分頁確認 token 已擷取。
 3. 用「單次測試繳納」測：currency、virtual、能量各送 0 格或 1 格，再配上很大的數量，看伺服器接不接受、會不會截到剩餘量。
 4. 實際抵達時間跟預覽的預估做比較。
-5. 測試結果回填 `docs/walkr-epic-events.md`；如果 0 格可行，再請使用者把模式切成「無限」。
+5. 測試結果回填 `docs/walkr-epic-events.md`。
 
 ### 使用者提供各階段資料時，要拿到的東西
 
@@ -159,7 +160,7 @@
 
 ### 待確認
 
-- **無限模式是否可行**：resources 送 0 格伺服器不擋，currency / virtual / 能量送 0 格、大數量是否接受還沒測。使用者會用單次測試確認，結果要回填到 `docs/walkr-epic-events.md`，必要時調整 `planEventDonations`、`planEnergyDonations`。
+- **無限模式（已移除）**：resources 送 0 格伺服器不擋；currency 不可行（2026-11-24）：0 格配 400,000、0 格配 1,000、1 格配 400,000 都被整筆拒絕，伺服器會檢查格數與數量，不會截斷（見 `docs/walkr-epic-events.md` 單次測試結果）；virtual / 能量還沒測。cron 用 3 格繳 400,000 已在手機上確認成功。使用者依遊戲經驗判斷 virtual／能量也會被擋，決定移除無限模式。
 - 標準模式第一段只知道「3 格 = 需求量 1/2」，較小的選項不清楚（virtual-food 用 2 格繳 100/250）。
 - `preparation` 類型（第一階段）沒有繳納紀錄，暫時當作 currency 處理。
 - 測試方式：node mock `$persistentStore`、`$httpClient` 等，以 HAR 的 `fleets/current` 模擬伺服器（clamp、refresh、耐力），傳說 25 個情境，加上管理介面 API、艦橋、實驗室開關 13 個情境，共 38 個。測試程式放在 session 的 scratchpad，不在 repo 內，下次要重寫 harness（做法：用 vm 執行腳本，`$httpClient` 接到依 HAR `fleets/current` 模擬的假伺服器）。

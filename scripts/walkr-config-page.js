@@ -78,6 +78,16 @@ button:disabled { opacity: 0.5; }
     font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre;
 }
 .result .title { font-weight: 600; color: #fff; }
+.result .progress { margin: 6px 0 8px; }
+.result .progress-head { display: flex; justify-content: space-between; gap: 8px; }
+.result .bar { height: 8px; margin-top: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.result .bar span { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #6ee7d8, #b4f0a8); }
+.result .capsules { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
+.result .capsule { width: 30px; height: 12px; border-radius: 6px; border: 1.5px solid #6ee7d8; }
+.result .capsules .name { margin-right: 2px; }
+.result .capsules .recovery { margin-left: 4px; color: #8aa; font-size: 12px; }
+.result .capsule.full { background: #6ee7d8; }
+.result hr { border: none; border-top: 1px solid rgba(255, 255, 255, 0.15); margin: 8px 0; }
 .result .time { color: #8aa; font-size: 12px; }
 .info { font-size: 13px; line-height: 1.7; }
 .info-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
@@ -102,7 +112,7 @@ button:disabled { opacity: 0.5; }
     <section class="tab" id="tab-epic">
         <div class="card">
             <div class="card-title">繳納狀態</div>
-            <div class="hint">「預覽」只讀取目前狀態與預計繳納內容；「立即繳納」依下方模式實際送出，不受自動執行開關限制；「原始回應」顯示 fleets/current 的完整 JSON，可複製給開發者確認新欄位（例如選擇題）。</div>
+            <div class="hint">「預覽」只讀取目前狀態與預計繳納內容；「立即繳納」依耐力規則實際送出，不受自動執行開關限制；「原始回應」顯示 fleets/current 的完整 JSON，可複製給開發者確認新欄位（例如選擇題）。</div>
             <div class="row">
                 <button class="secondary" id="btnStatus" onclick="callEpic('status', this)">預覽</button>
                 <button id="btnRun" onclick="callEpic('run', this)">立即繳納</button>
@@ -186,10 +196,8 @@ var FORMS = {
             { key: "WalkrEpicAutoEnabled", label: "自動執行（cron 每 10 分鐘）", type: "toggle", defaultOn: true },
             { key: "WalkrEpicVoteEnabled", label: "選擇題自動投票", type: "toggle", defaultOn: true,
               hint: "依腳本內 VOTING_CHOICES 投票；關閉時只通知一次題目與選項，不投票。" },
-            { key: "WalkrEpicMode", label: "模式", type: "select", options: [["standard", "標準（依耐力規則）"], ["unlimited", "無限（0 格一次繳滿）"]], defaultValue: "standard",
-              hint: "標準：第一段每項用 3 格繳需求量的 1/2，能量用 2+1 格繳 1/4 + 1/8。無限：需先用單次測試確認伺服器接受。" },
             { key: "WalkrEpicSharePercent", label: "第一段個人上限（每項需求量的 %）", type: "number", min: 1, max: 100, integer: true, defaultValue: "100",
-              hint: "星球資源一律 0 格繳納；能量不受個人上限限制。" }
+              hint: "第一段每項用 3 格繳需求量的 1/2，能量用 2+1 格繳 1/4 + 1/8；星球資源一律 0 格繳納；能量不受個人上限限制。" }
         ]
     },
     epicReward: {
@@ -286,12 +294,39 @@ function writeKey(key, value) {
     return postJson("/write", { key: key, value: value });
 }
 
+function lineHtml(lines) {
+    return (lines || []).map(function(line) { return '<div class="line">' + escapeHtml(line) + "</div>"; }).join("");
+}
+
+function progressHtml(item) {
+    var percent = item.required > 0 ? Math.min(100, (item.current / item.required) * 100) : 0;
+    return '<div class="progress"><div class="progress-head"><span>' + escapeHtml(item.label) + "</span><span>" +
+        formatNumber(item.current) + " / " + formatNumber(item.required) + escapeHtml(item.unit || "") + '</span></div><div class="bar"><span style="width:' +
+        percent.toFixed(1) + '%"></span></div></div>';
+}
+
+function capsulesHtml(hitpoints) {
+    if (!hitpoints) { return ""; }
+    var html = "";
+    for (var i = 0; i < hitpoints.max; i++) {
+        html += '<span class="capsule' + (i < hitpoints.value ? " full" : "") + '"></span>';
+    }
+    var recovery = hitpoints.recovery ? '<span class="recovery">' + escapeHtml(hitpoints.recovery) + "</span>" : "";
+    return '<div class="capsules"><span class="name">耐力</span>' + html + recovery + "</div>";
+}
+
+// 傳說預覽：進度條 → 耐力格（投票、星球資源沒有）與預計繳納 → 分隔線 → 下一階段飛行資訊
+function epicViewHtml(view) {
+    var flight = view.flightLines.length > 0 ? "<hr>" + lineHtml(view.flightLines) : "";
+    return view.progress.map(progressHtml).join("") + capsulesHtml(view.hitpoints) + lineHtml(view.actionLines) + flight;
+}
+
 function showRecord(el, record) {
     el.style.display = "block";
     el.className = "result" + (record.isError ? " error" : "");
     el.innerHTML = '<div class="time">' + escapeHtml(record.time ? formatTime(record.time) : "") + "</div>" +
         '<div class="title">' + escapeHtml(record.subtitle) + "</div>" +
-        (record.lines || []).map(function(line) { return '<div class="line">' + escapeHtml(line) + "</div>"; }).join("") +
+        (record.view ? epicViewHtml(record.view) : lineHtml(record.lines)) +
         (record.raw ? '<textarea readonly>' + escapeHtml(record.raw) + '</textarea><button class="secondary" onclick="copyRaw(this)">複製</button>' : "");
 }
 
