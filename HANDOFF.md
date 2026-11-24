@@ -109,14 +109,14 @@
 - `VOTING_CHOICES[傳說 id]` 每題為 `{ question, a, b, answer }`。**先**用 a、b 分別比對 `label_a`／`label_b`，都沒有命中才用題目比對 `event.name`／`event.description`（遊戲的大標題「要如何採取行動？」可能是各題共用的）。比對時忽略空白、標點與符號，其中一方包含另一方即可。
 - `answer` 是 `"a"`／`"b"`，送出 `value_x:1`、`hitpoints:0`。11 題都已由使用者填好預設路線；留空的題目不會投票，只通知一次。
 - `WalkrEpicVoteEnabled`（管理介面「選擇題自動投票」）關閉時不投票，只通知一次題目與選項；使用者會先關閉，抓到選擇題的資料後再開啟。
-- 預覽與通知會顯示剩餘時間、截止時間（`started_at + VOTING_HOURS`）、已投人數與過半票數（`floor(members_count / 2) + 1`）。以截圖驗證：開始後 7 分鐘顯示「剩 23 小時 53 分」，跟 app 一致。
+- 預覽與通知會顯示剩餘時間、截止時間（`started_at + VOTING_HOURS`）、已投人數與決定票數（`ceil(members_count / 2)`，2026-11-24 由 10 人 5 票就決定推得，原本是 `floor(n/2)+1`）。以截圖驗證：開始後 7 分鐘顯示「剩 23 小時 53 分」，跟 app 一致。
 - 投票失敗時記錄 `{ failed: 訊息 }`，cron 仍會重試，但同一個錯誤只通知一次。預覽（status）不會發通知。
 - 不管投票結果走哪條路線，之後的事件仍依 `fleets/current` 偵測需求繳納，不受影響。
 - 每題只投一次，紀錄在 `WalkrEpicVotedEvents`（key `fleetId:eventId`，最多 50 筆）；`hitpoints.value_*` 大於 0 視為已在 app 手動投過（HAR 已確認是自己投的選項）。
 - 投票後回應 `refresh:true`（立即決定）會接著繳能量；否則等過半數或時間到，下一次 cron 進入 `path` 再繳能量。
 - **已確認（2026-11-24 HAR）**：選項在 `label_a/b`、票數在 `fleet.value_*`、自己投的選項在 `hitpoints.value_*`；截止時間推得是 `fleet.started_at + 24 小時`。詳見 `docs/walkr-epic-events.md` 的選擇題章節。
 - **還沒觀察到**（使用者之後提供，收到再處理）：
-  1. 路線決定後、飛行中（`path`）的「原始回應」：確認 `target_id` 是否依投票結果改變（投票中為 121）、`fleet_histories` 怎麼記錄選擇題結果。
+  1. ~~路線決定後、飛行中（`path`）的「原始回應」~~：已取得（2026-11-24），`target_id` 不變（121）、`fleet_histories` 用 `value_*` 記最後票數，`started_at` 是目前步驟的開始時間；5/10 票就決定，預覽的決定票數已改成 `ceil(n/2)`（只有一筆樣本）。腳本在這個狀態只繳能量，判斷正確。詳見 `docs/walkr-epic-events.md`。
   2. 抵達分支第一關後的「原始回應」：確認分支事件的 `event_type`、名稱與需求量，核對 `docs/walkr-epic-routes.md`。截圖的 `A.`／`B.` 前綴是整理者加的分類，遊戲內名稱沒有，比對時要拿掉。
   3. 由腳本實際投出第一票（巨龍王下一題「兩條線索」，使用者會打開自動投票），確認伺服器接受、通知內容正確。
   4. 再核對一次截止時間是否為 `started_at + 24 小時`（目前只有一筆樣本）。

@@ -403,11 +403,11 @@ function findVotingOption(state) {
     return { option: option || { key: choice.answer, label: choice[choice.answer] } };
 }
 
-// 剩餘時間與過半票數（超過一半成員投同一項，或時間到才決定路線）
+// 剩餘時間與決定票數（同一項達成員數一半，或時間到才決定路線；2026-11-24 巨龍王 10 人時 5 票就決定）
 function votingStatusLine(state, nowMs) {
     let totalVotes = state.options.reduce((sum, o) => sum + o.votes, 0);
-    let majority = Math.floor(state.membersCount / 2) + 1;
-    let votesText = `已投 ${totalVotes}/${state.membersCount} 人｜過半需 ${majority} 票`;
+    let requiredVotes = Math.ceil(state.membersCount / 2);
+    let votesText = `已投 ${totalVotes}/${state.membersCount} 人｜達一半需 ${requiredVotes} 票`;
     if (state.startedAt <= 0) {
         return [`⏳ ${votesText}`];
     }
@@ -430,7 +430,7 @@ async function handleVoting(context, state, settings, isDryRun) {
     let lines = votingLines(state);
     let voted = readMyVote(state);
     if (voted) {
-        return { summary: { subtitle: subtitle, lines: [`🗳 已選「${voted}」，等待過半數或時間結束`].concat(lines) } };
+        return { summary: { subtitle: subtitle, lines: [`🗳 已選「${voted}」，等待票數達一半或時間結束`].concat(lines) } };
     }
     let { option, reason } = findVotingOption(state);
     if (option != undefined && !settings.isVoteEnabled) {

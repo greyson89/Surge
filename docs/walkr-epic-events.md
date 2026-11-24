@@ -62,6 +62,14 @@
   - `fleet.value_a/b` 是各選項票數（1／0，10 人中只有自己投票）；`hitpoints.value_a/b` 是自己投的選項（`value_a:1`），上一個事件的繳納量不會殘留。
   - 投票期間就有 `path`（id 104、`target_id` 121、6 小時、36,000 能量）；`event_status` 仍是 `event`。決定路線後 `target_id` 是否改變還沒觀察到。
   - 回應中沒有截止時間欄位。`fleet.started_at`（02:35:44）是這個事件的開始時間，截圖在 02:42 顯示「剩下 23h 53m」，所以截止時間是 `started_at + 24 小時`（只有一筆樣本）。
+- 路線決定後、飛行中的 `fleets/current`（2026-11-24 13:10 擷取，巨龍王 event 120）：
+  - `event_status` 變成 `path`，`event` 仍是選擇題本身（id 120、`event_type:"voting"`、`label_a/b` 不變）。
+  - `fleet.value_a/b` 保留最後票數（攻打他 5、救救他 1，10 人中 6 人投票），結果走「攻打他」。
+  - `fleet_histories` 多一筆 id 120：`event_type:"voting"`、`value_a/b` 是最後票數、`solved_at` 是決定時間（08:56:44）。
+  - `path` 跟投票中完全相同（id 104、`target_id` 121、6 小時、36,000 能量），所以 `target_id` 投票中就固定，不能用來判斷結果；要等抵達下一個事件，看事件名稱是否為攻打路線的「進攻巨龍王」。
+  - `fleet.started_at` 變成 08:56:44（= `solved_at`），代表 `started_at` 是**目前步驟**的開始時間，不是事件的開始時間。用它驗證燃燒速度：到 13:10:23 經過 15,219 秒 × 36,000/21,600 = 25,365，實際 `consumed_energy` 25,330，相差約 21 秒。
+  - `hitpoints` 重置成 3 格、`value_*` 全是 0。
+  - 決定時間：投票從 02:35:44 開始，08:56:44 就決定（約 6 小時 21 分，沒有等到 24 小時）。當時只有 5 票投「攻打他」，未達 `floor(10/2)+1 = 6` 票，所以門檻推定是「一半」（`ceil(n/2)` = 5 票），腳本預覽已改用這個值；只有這一筆樣本，奇數人數的情況還沒看過。
 - 腳本要投的路線設定在 `walkr-epic-auto-contribute.js` 的 `VOTING_CHOICES`；所有傳說的選擇題與各路線資源見 `docs/walkr-epic-routes.md`。
 - 選項 A／B 對應 `value_a`／`value_b`（截圖中 `A.`／`B.` 開頭的事件就是投票結果的路線，走完後合併回主線；前綴是整理者加的分類，遊戲內的事件名稱沒有）。
 
