@@ -24,6 +24,8 @@ const ENERGY_TIERS = [
     { ratio: 1 / 8, cost: 1 },
 ];
 const STANDARD_EVENT_RATIO = 1 / 2;
+// 3 格繳 1/2 不被接受時伺服器回的訊息（只有金幣、食物為 0 的 currency 關卡，2026-11-25/26 實測）
+const RULE_REJECTED_MESSAGE = "Unknown";
 const DEVICE_PARAM_KEYS = ["client_version", "country_code", "device_model", "locale", "os_version", "platform", "timezone"];
 const ITEM_KEYS = ["a", "b", "c"];
 const LAST_RESULT_KEY = "WalkrEpicLastResult";
@@ -239,23 +241,37 @@ function planEventDonations(state, settings) {
     return plans;
 }
 
-// 第二段：依 app 選項（1/4 用 2 格、1/8 用 1 格）用完剩餘耐力
-function planEnergyDonations(state) {
-    let remaining = state.energy.required - state.energy.donated;
-    if (remaining <= 0) {
-        return [];
-    }
+// 依 app 選項（1/4 用 2 格、1/8 用 1 格）用完剩餘耐力；伺服器接受小於選項上限的數量（2026-11-26 實測 3 格繳 1/8）
+function planTiers(remaining, required, hitpoints) {
     let [largeTier, smallTier] = ENERGY_TIERS;
-    let smallAmount = Math.floor(state.energy.required * smallTier.ratio);
-    let hitpoints = state.hitpoints;
+    let smallAmount = Math.floor(required * smallTier.ratio);
     let plans = [];
     while (remaining > 0 && hitpoints >= smallTier.cost) {
         // 剩餘量用小選項就能繳完時不浪費 2 格
         let tier = hitpoints >= largeTier.cost && remaining > smallAmount ? largeTier : smallTier;
-        let amount = Math.min(remaining, Math.floor(state.energy.required * tier.ratio));
+        let amount = Math.min(remaining, Math.floor(required * tier.ratio));
         plans.push({ amount: amount, cost: tier.cost });
         remaining -= amount;
         hitpoints -= tier.cost;
+    }
+    return plans;
+}
+
+// 第二段：能量
+function planEnergyDonations(state) {
+    let remaining = state.energy.required - state.energy.donated;
+    return remaining > 0 ? planTiers(remaining, state.energy.required, state.hitpoints) : [];
+}
+
+// 第一段備用：3 格繳 1/2 被拒時，每項改用 2 格 1/4 + 1 格 1/8
+function planTieredEventDonations(state, settings) {
+    let hitpoints = state.hitpoints;
+    let plans = [];
+    for (let item of state.items) {
+        for (let tier of planTiers(shareRemaining(item, settings.sharePercent), item.required, hitpoints)) {
+            plans.push({ item: item, ...tier });
+            hitpoints -= tier.cost;
+        }
     }
     return plans;
 }
@@ -281,6 +297,31 @@ async function fetchState(context) {
 async function donate(context, state, body) {
     let url = `${API_BASE}/fleets/${state.fleetId}/donate`;
     return request("POST", url, { ...context.deviceParams, ...body });
+}
+
+function sendEventPlans(context, state, plans) {
+    return sendPlans(context, state, plans, (p) => eventBody(state, p.item, p.amount, p.cost), (p) => p.item.label);
+}
+
+// 最後一筆是 3 格繳 1/2 被伺服器規則拒絕時，重新讀取（以伺服器的耐力與進度為準）後改用 1/4 + 1/8
+async function retryRejectedWithTiers(context, state, settings, results) {
+    let last = results[results.length - 1];
+    if (state.eventType == "resources" || last == undefined || last.isSuccess || last.error != RULE_REJECTED_MESSAGE) {
+        return { state: state, results: results };
+    }
+    let note = { isNote: true, line: `↪ ${last.label} ${formatNumber(last.amount)}（${last.cost} 格）被拒，改用 1/4＋1/8` };
+    await sleep(REQUEST_INTERVAL_MS);
+    let latest = await fetchState(context);
+    if (latest == null || latest.status != "event") {
+        return { state: latest, results: results.slice(0, -1).concat(note) };
+    }
+    let plans = planTieredEventDonations(latest, settings);
+    // 沒有可送的備用（例如被拒仍扣了耐力）時保留失敗紀錄，避免通知顯示「完成 0 筆」卻沒有標出失敗
+    if (plans.length == 0) {
+        return { state: latest, results: results.slice(0, -1).concat({ ...last, error: `${last.error}，改用 1/4＋1/8 時耐力剩 ${latest.hitpoints} 格` }) };
+    }
+    let retried = await sendEventPlans(context, latest, plans);
+    return { state: latest, results: results.slice(0, -1).concat(note, retried) };
 }
 
 async function sendPlans(context, state, plans, buildBody, label) {
@@ -506,7 +547,7 @@ async function contribute(context, settings, isDryRun) {
         if (isDryRun) {
             return previewResult(state, plans.map((p) => `${p.item.label} ${formatNumber(p.amount)}（${p.cost} 格）`), settings);
         }
-        results = await sendPlans(context, state, plans, (p) => eventBody(state, p.item, p.amount, p.cost), (p) => p.item.label);
+        ({ state, results } = await retryRejectedWithTiers(context, state, settings, await sendEventPlans(context, state, plans)));
         if (results.some((r) => r.isStepDone)) {
             await sleep(REQUEST_INTERVAL_MS);
             state = await fetchState(context);
@@ -612,8 +653,9 @@ function buildSummary(state, results, settings) {
     if (state == null) {
         return { subtitle: "傳說已結束", lines: results.map(resultLine), hasDonation: results.length > 0 };
     }
-    let succeeded = results.filter((r) => r.isSuccess).length;
-    let failed = results.length - succeeded;
+    let donations = results.filter((r) => !r.isNote);
+    let succeeded = donations.filter((r) => r.isSuccess).length;
+    let failed = donations.length - succeeded;
     let subtitle = results.length == 0 ? `${state.eventName}｜不需繳納` : `${state.eventName}｜完成 ${succeeded} 筆${failed > 0 ? `｜失敗 ${failed} 筆` : ""}`;
     let lines = results.map(resultLine);
     if (results.length == 0) {
