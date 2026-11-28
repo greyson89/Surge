@@ -1,6 +1,6 @@
 # HANDOFF：Walkr 自動化
 
-更新日期：2026-11-24
+更新日期：2026-11-28
 
 這份文件記錄 Walkr 腳本的分析經驗、實驗室自動贊助與傳說自動繳納的實作狀態。下一次接手時先看這份。
 
@@ -63,7 +63,7 @@
 | 分頁 | 內容與參數 |
 |---|---|
 | 🚀 傳說 | 繳納狀態（預覽、立即繳納、原始回應）、自動繳納設定（含選擇題自動投票開關）、單次測試；傳說獎勵 `WalkrEpicRewardType/Money/Cubes` |
-| 👟 共駕步數 | `WalkrCovertBaseEnergy`、`WalkrEnergyPerStep`（顯示預估額外步數）；今日步數狀態（唯讀）；艦橋 `WalkrBridgeDisplayEnergy`（畫面顯示值，預設 160000）、`WalkrBridgeClaimEnergy`（實際領取值，預設 80000） |
+| 👟 共駕步數 | 最上方「送能量給共駕」（手動送出，見下方）；`WalkrCovertBaseEnergy`、`WalkrEnergyPerStep`（顯示預估額外步數）；今日步數狀態（唯讀）；艦橋 `WalkrBridgeDisplayEnergy`（畫面顯示值，預設 160000）、`WalkrBridgeClaimEnergy`（實際領取值，預設 80000） |
 | 💰 帳號資源 | `WalkrIsExecuteMoneyModify`、`WalkrMoney`、`WalkrIsExecuteCubeModify`、`WalkrCube`；危險區塊，開啟和儲存前都會確認 |
 | 🧪 實驗室 | `WalkrLabAutoEnabled`（預設開啟）；顯示玩家 id、已處理輪次，可以清除 `WalkrDonateHandledRounds` |
 | 📖 資訊 | 所有傳說的事件、需求資源、飛行能量／時間（唯讀）。資料在 `scripts/walkr-epic-info.js`（模組規則「管理介面傳說資訊」，`/data/epics`），`null` 為遺漏、頁面以紅色標示；能量與時數不符每小時 6,000 也會標紅。實測後直接改這支腳本補資料 |
@@ -77,6 +77,16 @@
 - 今日步數狀態刻意不提供重置：步數是當天累計值，中途重置會讓上傳的步數變少。
 - mock 測試包含 API 白名單、token 不外洩、艦橋預設值、實驗室開關，並用瀏覽器在手機寬度驗證過各分頁。
 
+## 手動送能量給共駕（2026-11-28，尚未在手機上實測）
+
+- 管理介面「👟 共駕步數」最上方輸入能量後送出，呼叫 `/api/pilot/convert?energy=N`（模組規則「管理介面送能量給共駕」→ `scripts/walkr-pilot-convert.js`，同樣要求 `X-Walkr-Admin`）。
+- 腳本直接 `POST pilots/convert`，body 與 app 相同：裝置參數（取自 `WalkrLabCurrentUrl`）+ `converted_energy`。伺服器成功回 `{"success":true}`（2026-11-14 HAR）。
+- 不論成敗都回傳 HTTP 狀態與伺服器原始回應，並發通知 `🚀 Walkr Pilot`；`200` 且 `success === true` 才算成功。
+- 跟步數腳本分開：不讀也不改 `WalkrPedometerState.pendingEnergy`，步數不會增加。
+- 頁面只檢查是否為正整數；腳本另外擋掉大於 2,147,483,647 的值。伺服器上限未知，使用者會實測後回報。
+- 送出前會寫入 `WalkrPilotManualConvert`（`{energy, time}`），結束後清空。如果 `$httpClient` 的請求也會經過「修改轉換給共駕之能量」規則，`walkr-covert-energy.js` 看到能量相符、60 秒內的標記就原樣放行，不加 pendingEnergy。手機上可以從 log「手動送出能量…不修改」看出請求是否經過這條規則。
+- 頁面腳本的 HTML 寫在 template literal 裡，正規表示式的 `\d` 會被吃成 `d`，要寫成 `[0-9]`。
+
 ## 傳說（Epic）自動繳納（已實作並推上 GitHub，尚未在手機上實測）
 
 詳細機制與各階段資料見 `docs/walkr-epic-events.md`（使用者之後會補常見傳說的資料）。
@@ -84,7 +94,7 @@
 ### 檔案
 
 - `scripts/walkr-epic-auto-contribute.js`：一支腳本，四種執行方式
-  - cron `*/10`（`$argument` 空白）：受 `WalkrEpicAutoEnabled` 控制，沒有繳納時只記 log 不通知
+  - cron `*/4`（2026-11-28 由每 10 分鐘改為每 4 分鐘；`$argument` 空白）：受 `WalkrEpicAutoEnabled` 控制，沒有繳納時只記 log 不通知
   - `argument=run`：手動立即繳納
   - `argument=test`：依 `WalkrEpicTestItem/Amount/Hitpoints` 送出單次繳納，顯示伺服器原始回應
   - http-request `walkr.mysurge.com/api/epic/{run|status|test}`：給管理介面呼叫，`status` 只預覽不繳納

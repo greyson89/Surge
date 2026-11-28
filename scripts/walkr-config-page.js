@@ -2,6 +2,7 @@
 // 攔截 walkr.mysurge.com 首頁，回傳 HTML；頁面透過同網域 API 操作：
 //   /api/read、/api/write、/api/reset、/api/status → walkr-config-api.js（白名單參數）
 //   /api/epic/status、/api/epic/run、/api/epic/test、/api/epic/raw → walkr-epic-auto-contribute.js
+//   /api/pilot/convert → walkr-pilot-convert.js（手動送能量給共駕）
 //   /data/epics → walkr-epic-info.js（資訊分頁的傳說資料）
 // 一般設定以 FORMS 描述欄位，由 renderForm 產生；網址 hash（#epic 等）記住目前分頁
 
@@ -166,6 +167,14 @@ details.epic summary .sub { display: block; margin-top: 2px; font-size: 12px; fo
     </section>
 
     <section class="tab" id="tab-pilot">
+        <div class="card">
+            <div class="card-title">送能量給共駕</div>
+            <div class="hint">直接送出一筆 pilots/convert，共駕依此取得能量。與下方步數設定分開，不影響待轉換能量，步數也不會增加。伺服器上限未知，結果會顯示伺服器原始回應。</div>
+            <label for="convertEnergy">能量</label>
+            <input type="number" id="convertEnergy" min="1" step="1" placeholder="例如 30000">
+            <button class="danger" style="margin-top:10px" onclick="sendConvert(this)">送出</button>
+            <div class="result" id="convertResult"></div>
+        </div>
         <div id="form-pilot"></div>
         <div class="card">
             <div class="card-title">今日步數狀態</div>
@@ -218,7 +227,7 @@ var FORMS = {
     epicSettings: {
         title: "自動繳納設定",
         fields: [
-            { key: "WalkrEpicAutoEnabled", label: "自動執行（cron 每 10 分鐘）", type: "toggle", defaultOn: true },
+            { key: "WalkrEpicAutoEnabled", label: "自動執行（cron 每 4 分鐘）", type: "toggle", defaultOn: true },
             { key: "WalkrEpicVoteEnabled", label: "選擇題自動投票", type: "toggle", defaultOn: true,
               hint: "依腳本內 VOTING_CHOICES 投票；關閉時只通知一次題目與選項，不投票。" },
             { key: "WalkrEpicSharePercent", label: "第一段個人上限（每項需求量的 %）", type: "number", min: 1, max: 100, integer: true, defaultValue: "100",
@@ -509,6 +518,16 @@ function runTest(btn) {
     ]).then(function() { return getJson("/epic/test"); })
       .then(function(record) { showRecord(el, record); })
       .catch(function(err) { showMessage(el, "❌ " + err.message, true); }));
+}
+
+function sendConvert(btn) {
+    var el = document.getElementById("convertResult");
+    var text = document.getElementById("convertEnergy").value.trim();
+    if (!/^[0-9]+$/.test(text) || Number(text) < 1) { showMessage(el, "❌ 請輸入大於 0 的整數", true); return; }
+    if (!confirm("確定要送出 " + formatNumber(text) + " 能量給共駕？")) { return; }
+    withLoading(btn, getJson("/pilot/convert?energy=" + encodeURIComponent(text))
+        .then(function(record) { showRecord(el, record); })
+        .catch(function(err) { showMessage(el, "❌ " + err, true); }));
 }
 
 function loadEpic() {

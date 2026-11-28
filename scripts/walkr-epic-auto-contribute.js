@@ -764,7 +764,7 @@ function finish(route, summary, isError) {
     if (!READ_ONLY_ROUTES.includes(route) && !summary.isSkipped) {
         $persistentStore.write(JSON.stringify(record), LAST_RESULT_KEY);
     }
-    // cron 沒有繳納時只記 log，避免每 10 分鐘通知一次
+    // cron 沒有繳納時只記 log，避免每 4 分鐘通知一次
     if (isError || summary.hasDonation || summary.shouldNotify || (route != "cron" && !READ_ONLY_ROUTES.includes(route))) {
         notify(summary.subtitle, summary.lines.join("\n"));
     } else {
