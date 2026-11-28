@@ -13,7 +13,7 @@
 //   WalkrEpicVoteEnabled   true/false，選擇題是否自動投票，預設 true；關閉時只通知一次題目與選項
 //   WalkrEpicSharePercent  第一段每一項自己最多繳需求量的幾 %（1~100），預設 100；能量不受此限制
 //   WalkrEpicTestItem      a/b/c/energy，空白為自動選擇目前步驟第一個未完成項目
-//   WalkrEpicTestAmount    數量，空白為剩餘需求量
+//   WalkrEpicTestAmount    數量，空白為剩餘需求量；1/2、1/4、1/8 為需求量的比例（不超過剩餘量）
 //   WalkrEpicTestHitpoints 請求中要使用的格數，預設 1
 
 const API_BASE = "https://production.sw.fourdesire.com/api/v2";
@@ -24,6 +24,12 @@ const ENERGY_TIERS = [
     { ratio: 1 / 8, cost: 1 },
 ];
 const STANDARD_EVENT_RATIO = 1 / 2;
+// 單次測試的比例選項：1/2 與第一段相同無條件進位，1/4、1/8 與 planTiers 相同無條件捨去
+const TEST_RATIOS = {
+    "1/2": { ratio: STANDARD_EVENT_RATIO, round: Math.ceil },
+    "1/4": { ratio: ENERGY_TIERS[0].ratio, round: Math.floor },
+    "1/8": { ratio: ENERGY_TIERS[1].ratio, round: Math.floor },
+};
 // 3 格繳 1/2 不被接受時伺服器回的訊息（只有金幣、食物為 0 的 currency 關卡，2026-11-25/26 實測）
 const RULE_REJECTED_MESSAGE = "Unknown";
 const DEVICE_PARAM_KEYS = ["client_version", "country_code", "device_model", "locale", "os_version", "platform", "timezone"];
@@ -672,6 +678,15 @@ function resultLine(r) {
     return r.isSuccess ? `✅ ${r.label} ${formatNumber(r.amount)}（${r.cost} 格）` : `❌ ${r.label} ${formatNumber(r.amount)}：${r.error}`;
 }
 
+// 測試數量：空白為剩餘量；1/2、1/4、1/8 為需求量的比例（不超過剩餘量，取整方式與自動繳納相同）；其他為自訂數量
+function testAmount(amountText, required, remaining) {
+    if (Object.prototype.hasOwnProperty.call(TEST_RATIOS, amountText)) {
+        let tier = TEST_RATIOS[amountText];
+        return Math.max(0, Math.min(remaining, tier.round(required * tier.ratio)));
+    }
+    return amountText === "" ? remaining : Number(amountText);
+}
+
 // 單次測試：依參數送出一筆繳納，回傳送出的內容與伺服器原始回應
 async function testDonate(context) {
     let state = await fetchState(context);
@@ -688,7 +703,8 @@ async function testDonate(context) {
         throw new Error(`找不到可測試的項目（${itemKey || "自動"}）`);
     }
     let remaining = isEnergy ? state.energy.required - state.energy.donated : item.required - item.current;
-    let amount = amountText === "" ? remaining : Number(amountText);
+    let required = isEnergy ? state.energy.required : item.required;
+    let amount = testAmount(amountText, required, remaining);
     if (!Number.isFinite(amount) || !Number.isFinite(cost)) {
         throw new Error(`測試參數格式錯誤：數量「${amountText}」、格數「${costText}」`);
     }

@@ -150,6 +150,13 @@ details.epic summary .sub { display: block; margin-top: 2px; font-size: 12px; fo
                 <option value="c">value_c（星球資源 C）</option>
                 <option value="energy">能量</option>
             </select>
+            <label for="testRatio">數量方式</label>
+            <select id="testRatio" onchange="onTestRatioChange()">
+                <option value="">自訂數量</option>
+                <option value="1/2">需求量 1/2（3 格）</option>
+                <option value="1/4">需求量 1/4（2 格）</option>
+                <option value="1/8">需求量 1/8（1 格）</option>
+            </select>
             <div class="row">
                 <div>
                     <label for="testAmount">數量（空白 = 剩餘量）</label>
@@ -507,13 +514,29 @@ function callEpic(action, btn) {
         .catch(function(err) { showMessage(el, "❌ " + err, true); }));
 }
 
+// 比例選項對應 app 的格數（與自動繳納相同），選擇後自動帶入格數，仍可手動修改
+var TEST_RATIO_HITPOINTS = { "1/2": "3", "1/4": "2", "1/8": "1" };
+
+function setAmountByRatio(ratio) {
+    var amountInput = document.getElementById("testAmount");
+    amountInput.disabled = ratio !== "";
+    amountInput.placeholder = ratio !== "" ? "依比例計算" : "剩餘需求量";
+    if (ratio !== "") { amountInput.value = ""; }
+}
+
+function onTestRatioChange() {
+    var ratio = document.getElementById("testRatio").value;
+    setAmountByRatio(ratio);
+    if (ratio !== "") { document.getElementById("testHitpoints").value = TEST_RATIO_HITPOINTS[ratio]; }
+}
+
 function runTest(btn) {
     var el = document.getElementById("testResult");
     var hitpointsText = document.getElementById("testHitpoints").value.trim();
     if (!confirm("確定要送出測試繳納？")) { return; }
     withLoading(btn, Promise.all([
         writeKey("WalkrEpicTestItem", document.getElementById("testItem").value),
-        writeKey("WalkrEpicTestAmount", document.getElementById("testAmount").value.trim()),
+        writeKey("WalkrEpicTestAmount", document.getElementById("testRatio").value || document.getElementById("testAmount").value.trim()),
         writeKey("WalkrEpicTestHitpoints", hitpointsText === "" ? "1" : hitpointsText)
     ]).then(function() { return getJson("/epic/test"); })
       .then(function(record) { showRecord(el, record); })
@@ -532,7 +555,12 @@ function sendConvert(btn) {
 
 function loadEpic() {
     readKey("WalkrEpicTestItem").then(function(v) { document.getElementById("testItem").value = v || ""; });
-    readKey("WalkrEpicTestAmount").then(function(v) { document.getElementById("testAmount").value = v || ""; });
+    readKey("WalkrEpicTestAmount").then(function(v) {
+        var isRatio = TEST_RATIO_HITPOINTS.hasOwnProperty(v);
+        document.getElementById("testRatio").value = isRatio ? v : "";
+        document.getElementById("testAmount").value = isRatio ? "" : (v || "");
+        setAmountByRatio(isRatio ? v : "");
+    });
     readKey("WalkrEpicTestHitpoints").then(function(v) { document.getElementById("testHitpoints").value = v === "" ? "1" : v; });
     // 進入畫面時自動預覽一次目前狀態（不顯示上次的暫存結果）
     callEpic("status", document.getElementById("btnStatus"));

@@ -146,7 +146,7 @@
 | `WalkrEpicVoteEnabled` | 選擇題是否自動投票 | true |
 | `WalkrEpicSharePercent` | 第一段每項自己最多繳需求量的 %（讓隊友有機會貢獻），能量不受限制 | 100 |
 | `WalkrEpicTestItem` | 測試項目 a/b/c/energy，空白自動 | 空白 |
-| `WalkrEpicTestAmount` | 測試數量，空白為剩餘量 | 空白 |
+| `WalkrEpicTestAmount` | 測試數量，空白為剩餘量；`1/2`、`1/4`、`1/8` 為需求量的比例（不超過剩餘量，1/2 無條件進位、其他捨去，與自動繳納相同）。管理介面「數量方式」選比例時自動帶入格數 3／2／1（仍可改） | 空白 |
 | `WalkrEpicTestHitpoints` | 測試請求的格數 | 1 |
 | `WalkrEpicVotedEvents` | 選擇題已投票／已通知的紀錄（腳本自動寫入） | 空白 |
 
